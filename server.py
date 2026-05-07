@@ -54,14 +54,6 @@ SMTP_PASSWORD = os.environ.get("STUDERA_SMTP_PASSWORD", os.environ.get("STUDERA_
 SMTP_FROM = os.environ.get("STUDERA_SMTP_FROM", SMTP_USER or "no-reply@studera.local").strip()
 SMTP_USE_TLS = os.environ.get("STUDERA_SMTP_TLS", "1") != "0"
 EMAIL_DEV_LOG = os.environ.get("STUDERA_EMAIL_DEV_LOG", "0") == "1"
-BOOTSTRAP_ADMINS = {
-    "yi46635@sas.edu.sg": {
-        "institution": "Singapore American School",
-        "country": "Singapore",
-        "domain": "sas.edu.sg",
-        "curricula": ["AP Curriculum", "SAT / ACT"],
-    }
-}
 def bootstrap_site_admin_accounts():
     accounts = {}
     primary_email = os.environ.get("STUDERA_SITE_ADMIN_EMAIL", "").strip().lower()
@@ -474,28 +466,6 @@ def init_db():
         for row in rows:
             inferred = "|".join(curricula_for_school(row["institution"], row["institution_country"] or ""))
             conn.execute("UPDATE users SET curricula = ? WHERE id = ?", (inferred, row["id"]))
-        for email, school in BOOTSTRAP_ADMINS.items():
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO school_settings (
-                  institution, institution_country, institution_domain, curricula, updated_at
-                ) VALUES (?, ?, ?, ?, ?)
-                """,
-                (school["institution"], school["country"], school["domain"], "|".join(school["curricula"]), now()),
-            )
-            conn.execute(
-                """
-                UPDATE users
-                SET is_school_admin = 1,
-                    is_site_admin = 0,
-                    institution = ?,
-                    institution_country = ?,
-                    institution_domain = ?,
-                    curricula = ?
-                WHERE email = ?
-                """,
-                (school["institution"], school["country"], school["domain"], "|".join(school["curricula"]), email),
-            )
         for email, account in bootstrap_site_admin_accounts().items():
             if not email:
                 continue
@@ -895,10 +865,6 @@ def verify_join_key(join_key, settings_row):
     if not join_key:
         return False
     return verify_password(str(join_key), settings_row["join_key_salt"], settings_row["join_key_hash"])
-
-
-def bootstrap_school_for_email(email):
-    return BOOTSTRAP_ADMINS.get(str(email or "").strip().lower())
 
 
 def fallback_school(raw_query):
@@ -1441,12 +1407,6 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json({"error": password_error}, HTTPStatus.BAD_REQUEST)
         email = str(data.get("email", "")).strip().lower()
         role = data["role"] if data["role"] in ("student", "teacher", "staff") else "student"
-        bootstrap_school = bootstrap_school_for_email(email)
-        if bootstrap_school:
-            data["institution"] = bootstrap_school["institution"]
-            data["institution_country"] = bootstrap_school["country"]
-            data["institution_domain"] = bootstrap_school["domain"]
-            data["curricula"] = "|".join(bootstrap_school["curricula"])
         curricula = str(data.get("curricula", "")).strip()
         if not curricula:
             return self.send_json({"error": "Choose your school from the suggestions so Studera can assign its curriculum."}, HTTPStatus.BAD_REQUEST)
@@ -1456,8 +1416,7 @@ class Handler(SimpleHTTPRequestHandler):
                 school = school_settings_for(conn, data["institution"].strip(), str(data.get("institution_domain", "")).strip())
                 if school:
                     curricula = school["curricula"] or curricula
-                is_admin = 1 if bootstrap_school else 0
-                if school and not is_admin and not verify_join_key(data.get("join_key", ""), school):
+                if school and not verify_join_key(data.get("join_key", ""), school):
                     return self.send_json({"error": "That school requires a valid join key."}, HTTPStatus.FORBIDDEN)
                 cur = conn.execute(
                     """
@@ -1474,19 +1433,16 @@ class Handler(SimpleHTTPRequestHandler):
                         str(data.get("institution_domain", "")).strip(),
                         curricula,
                         role,
-                        1 if is_admin else 0,
-                        is_admin,
+                        0,
+                        0,
                         salt,
                         digest,
                         now(),
                     ),
                 )
                 user_id = cur.lastrowid
-                verify_token = "" if is_admin else create_auth_token(conn, user_id, "verify_email", 7 * 24 * 60 * 60)
+                verify_token = create_auth_token(conn, user_id, "verify_email", 7 * 24 * 60 * 60)
                 session_token = ""
-                if is_admin:
-                    session_token = secrets.token_urlsafe(32)
-                    conn.execute("INSERT INTO sessions (token, user_id, created_at) VALUES (?, ?, ?)", (session_token, user_id, now()))
                 row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         except sqlite3.IntegrityError:
             return self.send_json({"error": "That email is already registered."}, HTTPStatus.CONFLICT)

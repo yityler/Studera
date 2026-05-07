@@ -157,6 +157,29 @@ class StuderaPrivacyTests(unittest.TestCase):
         self.assertEqual(status, 200, data)
         self.assertEqual(data["user"]["email"], "unverified@example-m.edu")
 
+    def test_new_accounts_are_never_school_admins_by_email(self):
+        client = Client(self.base)
+        status, data = client.request("POST", "/api/auth/register", {
+            "name": "Tyler Yi",
+            "email": "yi46635@sas.edu.sg",
+            "password": "strongpass123",
+            "institution": "Singapore American School",
+            "institution_country": "Singapore",
+            "institution_domain": "sas.edu.sg",
+            "curricula": "AP Curriculum|SAT / ACT",
+            "role": "student",
+        })
+        self.assertEqual(status, 200, data)
+        self.assertTrue(data["requires_verification"])
+        with server.db() as conn:
+            row = conn.execute(
+                "SELECT is_school_admin, is_site_admin, email_verified FROM users WHERE email = ?",
+                ("yi46635@sas.edu.sg",),
+            ).fetchone()
+        self.assertEqual(row["is_school_admin"], 0)
+        self.assertEqual(row["is_site_admin"], 0)
+        self.assertEqual(row["email_verified"], 0)
+
     def test_users_cannot_cross_school_read_threads(self):
         school_a = self.register_verified("alice@example-a.edu", "Example A School", "example-a.edu")
         status, data = school_a.request("POST", "/api/threads", {
