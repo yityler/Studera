@@ -443,6 +443,61 @@ function openModal({ title, eyebrow = "Edit", body = "", titleValue = "", titleF
   });
 }
 
+function openDangerConfirmModal({ title, eyebrow = "Danger", message, confirmLabel = "DELETE", submitLabel = "Delete", onSubmit }) {
+  closeModal();
+  const root = document.createElement("div");
+  root.className = "modal-backdrop";
+  root.dataset.modalRoot = "true";
+  root.innerHTML = `
+    <section class="studera-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <form data-modal-form>
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow danger">${escapeHtml(eyebrow)}</p>
+            <h2 id="modal-title">${escapeHtml(title)}</h2>
+          </div>
+          <button class="modal-close" type="button" data-modal-close aria-label="Close">×</button>
+        </div>
+        <p class="modal-copy">${escapeHtml(message)}</p>
+        <div class="field">
+          <label for="modal-confirm-field">Type ${escapeHtml(confirmLabel)} to confirm</label>
+          <input id="modal-confirm-field" name="confirm" autocomplete="off" required />
+        </div>
+        <p class="form-message" data-modal-message></p>
+        <div class="modal-actions">
+          <button class="button secondary" type="button" data-modal-close>Cancel</button>
+          <button class="button danger" type="submit">${escapeHtml(submitLabel)}</button>
+        </div>
+      </form>
+    </section>
+  `;
+  document.body.appendChild(root);
+  document.body.classList.add("modal-open");
+  requestAnimationFrame(() => $("#modal-confirm-field", root)?.focus({ preventScroll: true }));
+  root.addEventListener("click", (event) => {
+    if (event.target === root || event.target.closest("[data-modal-close]")) closeModal();
+  });
+  root.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.target.closest("form");
+    const submit = $("button[type='submit']", root);
+    if (!form) return;
+    const data = Object.fromEntries(new FormData(form));
+    if (data.confirm !== confirmLabel) {
+      setMessage("[data-modal-message]", `Type ${confirmLabel} exactly to continue.`, "error");
+      return;
+    }
+    submit.disabled = true;
+    try {
+      await onSubmit(data);
+      closeModal();
+    } catch (error) {
+      setMessage("[data-modal-message]", error.message, "error");
+      submit.disabled = false;
+    }
+  });
+}
+
 function openReportModal({ targetType, targetId }) {
   closeModal();
   const root = document.createElement("div");
@@ -1074,6 +1129,7 @@ async function renderAdmin() {
           <div class="admin-row-actions">
             ${member.is_school_admin ? `<span class="badge teacher">Admin</span>` : `<span class="badge student">Member</span>`}
             ${member.is_school_admin && member.email !== state.user.email ? `<button class="text-action danger" type="button" data-admin-revoke="${escapeHtml(member.email)}">Revoke Admin</button>` : ""}
+            ${member.email !== state.user.email ? `<button class="text-action danger" type="button" data-admin-delete-member="${escapeHtml(member.email)}" data-admin-delete-name="${escapeHtml(member.name)}">Delete Account</button>` : ""}
           </div>
         </article>
       `).join("");
@@ -1216,6 +1272,7 @@ function installAdmin() {
     const reportStatus = event.target.closest("[data-report-status]");
     const exportButton = event.target.closest("[data-admin-export]");
     const revokeAdmin = event.target.closest("[data-admin-revoke]");
+    const deleteMember = event.target.closest("[data-admin-delete-member]");
     const removeCustom = event.target.closest("[data-remove-custom-curriculum]");
     if (removeCustom) {
       const row = removeCustom.closest("[data-custom-curriculum-row]");
@@ -1234,6 +1291,25 @@ function installAdmin() {
       } catch (error) {
         toast(error.message);
       }
+      return;
+    }
+    if (deleteMember) {
+      const email = deleteMember.dataset.adminDeleteMember;
+      const name = deleteMember.dataset.adminDeleteName || email;
+      openDangerConfirmModal({
+        title: "Delete Member Account",
+        eyebrow: "Member Deletion",
+        message: `This will permanently delete ${name}'s account and remove their threads, replies, sessions, reports, bookmarks, and supports from your school archive.`,
+        submitLabel: "Delete Account",
+        onSubmit: async (data) => {
+          await api("/api/admin/members/delete", {
+            method: "POST",
+            body: JSON.stringify({ email, confirm: data.confirm }),
+          });
+          toast("Member account deleted.");
+          await renderAdmin();
+        },
+      });
       return;
     }
     if (reportStatus) {

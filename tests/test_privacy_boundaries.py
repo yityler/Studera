@@ -212,6 +212,48 @@ class StuderaPrivacyTests(unittest.TestCase):
         status, data = other_admin.request("DELETE", f"/api/threads/{thread_id}")
         self.assertEqual(status, 403)
 
+    def test_school_admin_can_delete_member_with_delete_confirmation(self):
+        member = self.register_verified("member-delete@example-s.edu", "Example S School", "example-s.edu")
+        status, data = member.request("POST", "/api/threads", {
+            "title": "Delete cleanup thread",
+            "body": "This content should be removed with the account.",
+            "curriculum": "AP Curriculum",
+            "section": "AP Biology",
+        })
+        self.assertEqual(status, 200, data)
+        thread_id = data["thread"]["id"]
+        admin = self.register_verified("delete-admin@example-s.edu", "Example S School", "example-s.edu")
+        with server.db() as conn:
+            conn.execute("UPDATE users SET is_school_admin = 1 WHERE email = ?", ("delete-admin@example-s.edu",))
+
+        status, data = admin.request("POST", "/api/admin/members/delete", {
+            "email": "member-delete@example-s.edu",
+            "confirm": "delete",
+        })
+        self.assertEqual(status, 400)
+
+        status, data = admin.request("POST", "/api/admin/members/delete", {
+            "email": "member-delete@example-s.edu",
+            "confirm": "DELETE",
+        })
+        self.assertEqual(status, 200, data)
+        with server.db() as conn:
+            self.assertIsNone(conn.execute("SELECT id FROM users WHERE email = ?", ("member-delete@example-s.edu",)).fetchone())
+            self.assertIsNone(conn.execute("SELECT id FROM threads WHERE id = ?", (thread_id,)).fetchone())
+            audit = conn.execute("SELECT action FROM audit_logs WHERE action = 'delete_member_account'").fetchone()
+        self.assertIsNotNone(audit)
+
+    def test_school_admin_cannot_delete_cross_school_member(self):
+        self.register_verified("cross-delete@example-t.edu", "Example T School", "example-t.edu")
+        admin = self.register_verified("delete-admin@example-u.edu", "Example U School", "example-u.edu")
+        with server.db() as conn:
+            conn.execute("UPDATE users SET is_school_admin = 1 WHERE email = ?", ("delete-admin@example-u.edu",))
+        status, data = admin.request("POST", "/api/admin/members/delete", {
+            "email": "cross-delete@example-t.edu",
+            "confirm": "DELETE",
+        })
+        self.assertEqual(status, 403)
+
     def test_thread_author_cannot_lock_or_reopen_thread(self):
         author = self.register_verified("author@example-e.edu", "Example E School", "example-e.edu")
         status, data = author.request("POST", "/api/threads", {

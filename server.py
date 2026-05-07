@@ -862,6 +862,46 @@ def log_audit(conn, actor, action, target_type="", target_id="", school="", deta
     )
 
 
+def delete_user_account_records(conn, target, actor=None, audit_action="delete_account"):
+    target_user = public_user(target)
+    user_id = target["id"]
+    owned_thread_ids = [row["id"] for row in conn.execute("SELECT id FROM threads WHERE user_id = ?", (user_id,)).fetchall()]
+    if owned_thread_ids:
+        placeholders = ",".join("?" for _ in owned_thread_ids)
+        reply_ids = [row["id"] for row in conn.execute(
+            f"SELECT id FROM replies WHERE user_id = ? OR thread_id IN ({placeholders})",
+            [user_id] + owned_thread_ids,
+        ).fetchall()]
+    else:
+        reply_ids = [row["id"] for row in conn.execute("SELECT id FROM replies WHERE user_id = ?", (user_id,)).fetchall()]
+    if owned_thread_ids:
+        placeholders = ",".join("?" for _ in owned_thread_ids)
+        conn.execute(f"DELETE FROM attachments WHERE parent_type = 'thread' AND parent_id IN ({placeholders})", owned_thread_ids)
+        conn.execute(f"DELETE FROM supports WHERE thread_id IN ({placeholders}) OR user_id = ?", owned_thread_ids + [user_id])
+        conn.execute(f"DELETE FROM bookmarks WHERE thread_id IN ({placeholders}) OR user_id = ?", owned_thread_ids + [user_id])
+        conn.execute(f"DELETE FROM reports WHERE thread_id IN ({placeholders}) OR reporter_user_id = ? OR resolved_by = ?", owned_thread_ids + [user_id, user_id])
+    else:
+        conn.execute("DELETE FROM supports WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM bookmarks WHERE user_id = ?", (user_id,))
+        conn.execute("DELETE FROM reports WHERE reporter_user_id = ? OR resolved_by = ?", (user_id, user_id))
+    if reply_ids:
+        placeholders = ",".join("?" for _ in reply_ids)
+        conn.execute(f"DELETE FROM attachments WHERE parent_type = 'reply' AND parent_id IN ({placeholders})", reply_ids)
+        conn.execute(f"DELETE FROM reply_supports WHERE reply_id IN ({placeholders}) OR user_id = ?", reply_ids + [user_id])
+        conn.execute(f"DELETE FROM reports WHERE target_type = 'reply' AND target_id IN ({placeholders})", reply_ids)
+    else:
+        conn.execute("DELETE FROM reply_supports WHERE user_id = ?", (user_id,))
+    conn.execute("DELETE FROM replies WHERE user_id = ?", (user_id,))
+    if owned_thread_ids:
+        placeholders = ",".join("?" for _ in owned_thread_ids)
+        conn.execute(f"DELETE FROM replies WHERE thread_id IN ({placeholders})", owned_thread_ids)
+        conn.execute(f"DELETE FROM threads WHERE id IN ({placeholders})", owned_thread_ids)
+    conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+    conn.execute("DELETE FROM auth_tokens WHERE user_id = ?", (user_id,))
+    log_audit(conn, actor or target_user, audit_action, "user", user_id, target_user.get("institution", ""), {"email": target_user.get("email", "")})
+    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+
 def verify_join_key(join_key, settings_row):
     if not settings_row or not settings_row["join_key_hash"]:
         return True
@@ -1356,6 +1396,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.grant_admin()
         if parsed.path == "/api/admin/revoke":
             return self.revoke_admin()
+        if parsed.path == "/api/admin/members/delete":
+            return self.delete_school_member()
         if parsed.path == "/api/admin/reports/status":
             return self.admin_update_report()
         if parsed.path == "/api/reports":
@@ -2133,41 +2175,8 @@ class Handler(SimpleHTTPRequestHandler):
                     {"error": "Assign another school admin before deleting this account. You are the only admin for your school."},
                     HTTPStatus.FORBIDDEN,
                 )
-            owned_thread_ids = [row["id"] for row in conn.execute("SELECT id FROM threads WHERE user_id = ?", (user_id,)).fetchall()]
-            if owned_thread_ids:
-                placeholders = ",".join("?" for _ in owned_thread_ids)
-                reply_ids = [row["id"] for row in conn.execute(
-                    f"SELECT id FROM replies WHERE user_id = ? OR thread_id IN ({placeholders})",
-                    [user_id] + owned_thread_ids,
-                ).fetchall()]
-            else:
-                reply_ids = [row["id"] for row in conn.execute("SELECT id FROM replies WHERE user_id = ?", (user_id,)).fetchall()]
-            if owned_thread_ids:
-                placeholders = ",".join("?" for _ in owned_thread_ids)
-                conn.execute(f"DELETE FROM attachments WHERE parent_type = 'thread' AND parent_id IN ({placeholders})", owned_thread_ids)
-                conn.execute(f"DELETE FROM supports WHERE thread_id IN ({placeholders}) OR user_id = ?", owned_thread_ids + [user_id])
-                conn.execute(f"DELETE FROM bookmarks WHERE thread_id IN ({placeholders}) OR user_id = ?", owned_thread_ids + [user_id])
-                conn.execute(f"DELETE FROM reports WHERE thread_id IN ({placeholders}) OR reporter_user_id = ? OR resolved_by = ?", owned_thread_ids + [user_id, user_id])
-            else:
-                conn.execute("DELETE FROM supports WHERE user_id = ?", (user_id,))
-                conn.execute("DELETE FROM bookmarks WHERE user_id = ?", (user_id,))
-                conn.execute("DELETE FROM reports WHERE reporter_user_id = ? OR resolved_by = ?", (user_id, user_id))
-            if reply_ids:
-                placeholders = ",".join("?" for _ in reply_ids)
-                conn.execute(f"DELETE FROM attachments WHERE parent_type = 'reply' AND parent_id IN ({placeholders})", reply_ids)
-                conn.execute(f"DELETE FROM reply_supports WHERE reply_id IN ({placeholders}) OR user_id = ?", reply_ids + [user_id])
-                conn.execute(f"DELETE FROM reports WHERE target_type = 'reply' AND target_id IN ({placeholders})", reply_ids)
-            else:
-                conn.execute("DELETE FROM reply_supports WHERE user_id = ?", (user_id,))
-            conn.execute("DELETE FROM replies WHERE user_id = ?", (user_id,))
-            if owned_thread_ids:
-                placeholders = ",".join("?" for _ in owned_thread_ids)
-                conn.execute(f"DELETE FROM replies WHERE thread_id IN ({placeholders})", owned_thread_ids)
-                conn.execute(f"DELETE FROM threads WHERE id IN ({placeholders})", owned_thread_ids)
-            conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
-            conn.execute("DELETE FROM auth_tokens WHERE user_id = ?", (user_id,))
-            log_audit(conn, user, "delete_account", "user", user_id, user.get("institution", ""), {"email": user.get("email", "")})
-            conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            target = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+            delete_user_account_records(conn, target, user, "delete_account")
         cookie = session_cookie("", 0)
         return self.send_json({"ok": True}, cookie=cookie)
 
@@ -2364,6 +2373,33 @@ class Handler(SimpleHTTPRequestHandler):
                 )
             conn.execute("UPDATE users SET is_school_admin = 0 WHERE id = ?", (target["id"],))
             log_audit(conn, user, "revoke_school_admin", "user", target["id"], user["institution"], {"email": email})
+        return self.send_json({"ok": True})
+
+    def delete_school_member(self):
+        user = self.require_school_admin()
+        if not user:
+            return
+        data = self.read_json()
+        email = str(data.get("email", "")).strip().lower()
+        if str(data.get("confirm", "")).strip() != "DELETE":
+            return self.send_json({"error": "Type DELETE to confirm member account deletion."}, HTTPStatus.BAD_REQUEST)
+        if not email:
+            return self.send_json({"error": "Choose a member account to delete."}, HTTPStatus.BAD_REQUEST)
+        if email == user["email"]:
+            return self.send_json({"error": "Use Settings to delete your own account."}, HTTPStatus.BAD_REQUEST)
+        with db() as conn:
+            target = conn.execute("SELECT * FROM users WHERE email = ? AND is_site_admin = 0", (email,)).fetchone()
+            if not target:
+                return self.send_json({"error": "No school account found for that email."}, HTTPStatus.NOT_FOUND)
+            target_user = public_user(target)
+            if not same_school(user, target_user):
+                return self.send_json({"error": "Admins can only delete accounts within their own school."}, HTTPStatus.FORBIDDEN)
+            if target_user.get("is_school_admin") and school_admin_count(conn, target_user) <= 1:
+                return self.send_json(
+                    {"error": "Assign another school admin before deleting this account. This is the only admin for your school."},
+                    HTTPStatus.FORBIDDEN,
+                )
+            delete_user_account_records(conn, target, user, "delete_member_account")
         return self.send_json({"ok": True})
 
     def admin_reports(self):
