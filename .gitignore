@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# Local runtime data. Do not commit real users, sessions, uploads, or secrets.
+studera.db
+studera.db-*
+uploads/
+.env
+*.env
+!studera-email.env.example
+
+# Local test/runtime artifacts.
+.pytest_cache/
+coverage/
+htmlcov/

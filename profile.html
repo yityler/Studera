@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studera | Profile</title>
+    <link rel="stylesheet" href="styles.css?v=20260507-security-hardening-v84" />
+  </head>
+  <body data-page="profile" data-build="20260507-security-hardening-v84">
+    <nav class="site-nav">
+      <div class="nav-inner">
+        <a class="brand" href="index.html">Studera</a>
+        <button class="mobile-menu" data-menu-toggle type="button">Menu</button>
+        <div class="nav-links">
+          <a data-nav-feed href="feed.html">Feed</a>
+          <a data-nav-bookmarked href="feed.html?bookmarked=1">Bookmarked</a>
+          <a data-nav-settings href="settings.html">Settings</a>
+        </div>
+        <div class="nav-actions">
+          <button class="primary" data-auth-open type="button">Sign In</button>
+          <button class="hidden" data-logout type="button">Sign Out</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="page profile-page">
+      <section class="content-stack" data-profile-view>
+        <section class="empty-state">
+          <div>
+            <div class="empty-mark">▧</div>
+            <h2>Loading profile</h2>
+            <p>Studera is checking visibility and school access.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div><span class="brand">Studera</span><span>© 2026 Studera Academic Press</span></div>
+        <nav><a href="#">Honor Code</a><a href="#">Faculty Guidelines</a><a href="#">Privacy Archive</a><a href="#">Community Guidelines</a></nav>
+      </div>
+    </footer>
+    <div class="toast" data-toast></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="react-shell.js?v=20260507-security-hardening-v84"></script>
+    <script src="app.js?v=20260507-security-hardening-v84"></script>
+  </body>
+</html>

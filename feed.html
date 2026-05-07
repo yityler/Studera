@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studera | Feed</title>
+    <link rel="stylesheet" href="styles.css?v=20260507-security-hardening-v84" />
+  </head>
+  <body data-page="feed" data-build="20260507-security-hardening-v84">
+    <script>
+      if (new URLSearchParams(location.search).get("bookmarked") === "1") {
+        document.body.classList.add("is-bookmarked");
+      }
+    </script>
+    <nav class="site-nav">
+      <div class="nav-inner">
+        <a class="brand" href="index.html">Studera</a>
+        <button class="mobile-menu" data-menu-toggle type="button">Menu</button>
+        <div class="nav-links">
+          <a class="active" data-nav-feed href="feed.html">Feed</a>
+          <a data-nav-bookmarked href="feed.html?bookmarked=1">Bookmarked</a>
+          <a data-nav-settings href="settings.html">Settings</a>
+        </div>
+        <div class="nav-actions">
+          <button class="primary" data-auth-open type="button">Sign In</button>
+          <button class="hidden" data-logout type="button">Sign Out</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="page app-grid">
+      <aside class="sidebar">
+        <h1>Academic Filters</h1>
+        <p class="filter-copy">Select your curriculum</p>
+        <div class="filter-list" data-filters>
+          <button class="filter-item active" data-curriculum="" type="button">All Threads</button>
+          <button class="filter-item" data-curriculum="AP Curriculum" type="button">AP Curriculum</button>
+          <button class="filter-item" data-curriculum="IB Diploma" type="button">IB Diploma</button>
+          <button class="filter-item" data-curriculum="A-Levels" type="button">A-Levels</button>
+          <button class="filter-item" data-curriculum="SAT / ACT" type="button">SAT / ACT</button>
+          <button class="filter-item" data-curriculum="GCSE" type="button">GCSE</button>
+          <button class="filter-item" data-curriculum="Research" type="button">Research</button>
+        </div>
+      </aside>
+
+      <section class="content-stack">
+        <header class="page-title">
+          <div>
+            <p class="eyebrow">Community Archive</p>
+            <h1>Discussion Feed</h1>
+            <p class="lead">Search curriculum-aligned questions and create the first thread for your institution.</p>
+          </div>
+          <button class="button new-thread-button" data-new-thread type="button">New Thread</button>
+        </header>
+
+        <form class="search-bar search-bar-expanded" data-search-form>
+          <input name="q" type="search" placeholder="Search title, body, section, author, or attachments..." aria-label="Search discussions" />
+          <div class="custom-select compact-select" data-static-select>
+            <input type="hidden" id="feed-status" name="status" value="" />
+            <button class="custom-select-button" type="button" aria-label="Thread status filter">Any Status</button>
+            <div class="custom-select-menu">
+              <button class="custom-option active" type="button" data-value="">Any Status</button>
+              <button class="custom-option" type="button" data-value="open">Open</button>
+              <button class="custom-option" type="button" data-value="answered">Answered</button>
+              <button class="custom-option" type="button" data-value="locked">Locked</button>
+              <button class="custom-option" type="button" data-value="archived">Archived</button>
+            </div>
+          </div>
+          <label class="filter-toggle"><input name="teacher_replied" type="checkbox" />Teacher replied</label>
+          <label class="filter-toggle"><input name="has_uploads" type="checkbox" />Has uploads</label>
+          <button class="button secondary" type="submit">Search</button>
+        </form>
+
+        <section class="panel center composer-guest">
+          <div>
+            <h2>Join the Discourse</h2>
+            <p>Share a research inquiry or ask for curriculum guidance with the Studera community.</p>
+            <a class="button" href="index.html#auth">Sign in to post</a>
+          </div>
+        </section>
+
+        <section class="panel composer-authed" data-thread-composer>
+          <div class="composer-head">
+            <div>
+              <p class="eyebrow">New Discussion</p>
+              <h2>Start a thread</h2>
+            </div>
+            <button class="text-action" data-close-thread-composer type="button">Close</button>
+          </div>
+          <form data-thread-form>
+            <input type="hidden" id="thread-curriculum" name="curriculum" value="AP Curriculum" />
+            <div class="form-grid">
+              <div class="field wide">
+                <label for="thread-title">Title</label>
+                <input id="thread-title" name="title" placeholder="Ask a precise academic question" required />
+              </div>
+              <div class="field wide">
+                <label for="thread-section">Section</label>
+                <div class="custom-select" data-static-select data-section-select>
+                  <input type="hidden" id="thread-section" name="section" value="AP Biology" />
+                  <button class="custom-select-button" type="button">AP Biology</button>
+                  <div class="custom-select-menu" data-section-menu></div>
+                </div>
+              </div>
+              <div class="field wide">
+                <label for="thread-body">Body</label>
+                <textarea id="thread-body" name="body" placeholder="Add context, what you have tried, and the part that needs discussion." required></textarea>
+              </div>
+              <div class="field wide">
+                <label for="thread-file">Attachment</label>
+                <label class="file-drop" data-file-drop>
+                  <input id="thread-file" name="file_upload" type="file" data-file-input multiple />
+                  <span>Attach a PDF, image, document, or any file</span>
+                </label>
+                <div class="file-preview" data-file-preview></div>
+              </div>
+            </div>
+            <button class="button" type="submit">Publish Discussion</button>
+            <p class="form-message" data-thread-message></p>
+          </form>
+        </section>
+
+        <section class="thread-list" data-thread-list></section>
+      </section>
+
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div><span class="brand">Studera</span><span>© 2026 Studera Academic Press</span></div>
+        <nav><a href="#">Honor Code</a><a href="#">Faculty Guidelines</a><a href="#">Privacy Archive</a><a href="#">Community Guidelines</a></nav>
+      </div>
+    </footer>
+    <div class="toast" data-toast></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="react-shell.js?v=20260507-security-hardening-v84"></script>
+    <script src="app.js?v=20260507-security-hardening-v84"></script>
+  </body>
+</html>

@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studera | Settings</title>
+    <link rel="stylesheet" href="styles.css?v=20260507-security-hardening-v84" />
+  </head>
+  <body data-page="settings" data-build="20260507-security-hardening-v84">
+    <nav class="site-nav">
+      <div class="nav-inner">
+        <a class="brand" href="index.html">Studera</a>
+        <button class="mobile-menu" data-menu-toggle type="button">Menu</button>
+        <div class="nav-links">
+          <a data-nav-feed href="feed.html">Feed</a>
+          <a data-nav-bookmarked href="feed.html?bookmarked=1">Bookmarked</a>
+          <a class="active" data-nav-settings href="settings.html">Settings</a>
+        </div>
+        <div class="nav-actions">
+          <button class="primary" data-auth-open type="button">Sign In</button>
+          <button class="hidden" data-logout type="button">Sign Out</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="page settings-layout">
+      <aside class="settings-sidebar">
+        <p class="eyebrow">Account</p>
+        <h1>Settings</h1>
+        <nav>
+          <a href="#profile">Profile</a>
+          <a href="#security">Security</a>
+          <a href="#privacy">Privacy</a>
+          <a href="#notifications">Notifications</a>
+          <a href="#account">Account</a>
+        </nav>
+      </aside>
+
+      <section class="settings-main">
+        <section class="panel center settings-guest" data-settings-guest>
+          <div>
+            <h2>Sign in required</h2>
+            <p>Account settings are available after you sign in to Studera.</p>
+            <a class="button" href="index.html#auth">Sign In</a>
+          </div>
+        </section>
+
+        <section class="settings-form hidden" data-settings-form>
+          <section class="settings-panel" id="profile" data-settings-section>
+            <div>
+              <p class="eyebrow">Profile</p>
+              <h2>Public identity</h2>
+              <p>Adjust how your name and academic context appear beside posts and replies.</p>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="settings-name">Display Name</label>
+                <input id="settings-name" name="name" required />
+              </div>
+              <div class="field">
+                <label for="settings-title">Profile Title</label>
+                <input id="settings-title" name="profile_title" placeholder="AP Biology student, TOK mentor, lab assistant" />
+              </div>
+              <div class="field">
+                <label for="settings-role">Role</label>
+                <div class="custom-select" data-static-select data-settings-role>
+                  <input type="hidden" id="settings-role" name="role" value="student" />
+                  <button class="custom-select-button" type="button">Student</button>
+                  <div class="custom-select-menu">
+                    <button class="custom-option active" type="button" data-value="student">Student</button>
+                    <button class="custom-option" type="button" data-value="teacher">Teacher</button>
+                    <button class="custom-option" type="button" data-value="staff">Staff</button>
+                  </div>
+                </div>
+              </div>
+              <div class="field wide">
+                <label for="settings-bio">Short Bio</label>
+                <textarea id="settings-bio" name="bio" maxlength="600" placeholder="A brief academic note for your profile."></textarea>
+              </div>
+            </div>
+            <div class="section-save hidden" data-section-save>
+              <button class="button" type="button" data-save-settings>Save Profile</button>
+              <p class="form-message" data-settings-message></p>
+            </div>
+          </section>
+
+          <section class="settings-panel" id="security">
+            <div>
+              <p class="eyebrow">Security</p>
+              <h2>Email and password</h2>
+              <p>Verify your school email and manage local password recovery tokens for this prototype.</p>
+            </div>
+            <div class="security-grid">
+              <form data-verify-form>
+                <div class="field">
+                  <label for="verify-token">Verification Code</label>
+                  <input id="verify-token" name="token" autocomplete="one-time-code" placeholder="Enter the code from your email" />
+                </div>
+                <button class="button secondary" type="button" data-request-verification>Send Verification Email</button>
+                <button class="button" type="submit">Verify Email</button>
+                <p class="form-message" data-verify-message></p>
+              </form>
+              <form data-reset-request-form>
+                <div class="field">
+                  <label for="settings-reset-email">Password Reset Email</label>
+                  <input id="settings-reset-email" name="email" type="email" placeholder="name@school.edu" />
+                </div>
+                <button class="button secondary" type="submit">Email Reset Code</button>
+              </form>
+              <form data-reset-form>
+                <div class="field">
+                  <label for="settings-reset-token">Reset Token</label>
+                  <input id="settings-reset-token" name="token" placeholder="Paste reset token" />
+                </div>
+                <div class="field">
+                  <label for="settings-reset-password">New Password</label>
+                  <input id="settings-reset-password" name="password" type="password" placeholder="Minimum 12 characters" />
+                </div>
+                <button class="button" type="submit">Update Password</button>
+                <p class="form-message" data-reset-message></p>
+              </form>
+            </div>
+          </section>
+
+          <section class="settings-panel" id="privacy" data-settings-section>
+            <div>
+              <p class="eyebrow">Privacy</p>
+              <h2>Visibility</h2>
+              <p>Choose what classmates and public visitors can see on your account.</p>
+            </div>
+            <div class="form-grid">
+              <div class="field wide">
+                <label for="settings-visibility">Profile Visibility</label>
+                <div class="custom-select" data-static-select data-settings-visibility>
+                  <input type="hidden" id="settings-visibility" name="profile_visibility" value="school" />
+                  <button class="custom-select-button" type="button">School Community</button>
+                  <div class="custom-select-menu">
+                    <button class="custom-option" type="button" data-value="public">Public</button>
+                    <button class="custom-option active" type="button" data-value="school">School Community</button>
+                    <button class="custom-option" type="button" data-value="private">Private</button>
+                  </div>
+                </div>
+              </div>
+              <label class="toggle-row">
+                <input type="checkbox" name="show_school" />
+                <span></span>
+                Show my school on profile surfaces
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" name="show_email" />
+                <span></span>
+                Show my institutional email to staff
+              </label>
+            </div>
+            <div class="section-save hidden" data-section-save>
+              <button class="button" type="button" data-save-settings>Save Privacy</button>
+              <p class="form-message" data-settings-message></p>
+            </div>
+          </section>
+
+          <section class="settings-panel" id="notifications" data-settings-section>
+            <div>
+              <p class="eyebrow">Notifications</p>
+              <h2>Academic updates</h2>
+              <p>Control which account notifications Studera should prepare for you.</p>
+            </div>
+            <div class="form-grid">
+              <label class="toggle-row">
+                <input type="checkbox" name="email_replies" />
+                <span></span>
+                Notify me when someone replies to my threads
+              </label>
+              <label class="toggle-row">
+                <input type="checkbox" name="email_digest" />
+                <span></span>
+                Send a weekly digest of saved discussions
+              </label>
+            </div>
+            <div class="section-save hidden" data-section-save>
+              <button class="button" type="button" data-save-settings>Save Notifications</button>
+              <p class="form-message" data-settings-message></p>
+            </div>
+          </section>
+
+          <section class="settings-panel danger-panel" id="account">
+            <div>
+              <p class="eyebrow">Account Controls</p>
+              <h2>School and account</h2>
+              <p>Move your account to another school space or permanently delete your Studera account.</p>
+            </div>
+            <div class="account-danger-grid">
+              <form class="danger-form" data-change-school-form>
+                <div>
+                  <h3>Change school</h3>
+                  <p class="current-school" data-current-school></p>
+                </div>
+                <div class="field">
+                  <label for="settings-institution">New School</label>
+                  <div class="autocomplete" data-institution-autocomplete>
+                    <input id="settings-institution" name="institution" autocomplete="new-password" autocapitalize="words" spellcheck="false" placeholder="Start typing your new school" required />
+                    <input type="hidden" name="institution_country" data-institution-country />
+                    <input type="hidden" name="institution_domain" data-institution-domain />
+                    <input type="hidden" name="curricula" data-institution-curricula />
+                    <div class="autocomplete-menu" data-institution-results></div>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="settings-join-key">School Join Key</label>
+                  <input id="settings-join-key" name="join_key" type="text" autocomplete="off" placeholder="Only required if your new school has enabled one" />
+                </div>
+                <button class="button danger" type="submit">Change School</button>
+                <p class="form-message" data-school-change-message></p>
+              </form>
+
+              <form class="danger-form" data-delete-account-form>
+                <div>
+                  <h3>Delete account</h3>
+                  <p>This permanently removes your account, threads, replies, saves, supports, and sessions.</p>
+                </div>
+                <div class="field">
+                  <label for="settings-delete-confirm">Confirmation</label>
+                  <input id="settings-delete-confirm" name="confirm" placeholder="Type DELETE to confirm" autocomplete="off" />
+                </div>
+                <button class="button danger" type="submit">Delete Account</button>
+                <p class="form-message" data-delete-account-message></p>
+              </form>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div><span class="brand">Studera</span><span>© 2026 Studera Academic Press</span></div>
+        <nav><a href="#">Honor Code</a><a href="#">Faculty Guidelines</a><a href="#">Privacy Archive</a><a href="#">Community Guidelines</a></nav>
+      </div>
+    </footer>
+    <div class="toast" data-toast></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="react-shell.js?v=20260507-security-hardening-v84"></script>
+    <script src="app.js?v=20260507-security-hardening-v84"></script>
+  </body>
+</html>

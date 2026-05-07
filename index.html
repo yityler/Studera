@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studera | Academic Community</title>
+    <link rel="stylesheet" href="styles.css?v=20260507-security-hardening-v84" />
+  </head>
+  <body data-page="home" data-build="20260507-security-hardening-v84">
+    <nav class="site-nav">
+      <div class="nav-inner">
+        <a class="brand" href="index.html">Studera</a>
+        <button class="mobile-menu" data-menu-toggle type="button">Menu</button>
+        <div class="nav-links">
+          <a data-nav-about href="about.html">About</a>
+          <a data-nav-contact href="contact.html">Contact</a>
+        </div>
+        <div class="nav-actions">
+          <button class="primary" data-auth-open type="button">Sign In</button>
+          <button class="hidden" data-logout type="button">Sign Out</button>
+        </div>
+      </div>
+    </nav>
+
+    <main>
+      <section class="page hero">
+        <div class="hero-copy">
+          <p class="eyebrow">The Modern Archivist</p>
+          <h1><span>Scholarly</span><span>discourse,</span> refined for the classroom.</h1>
+          <p class="lead">Studera is a community-first academic discussion platform for curriculum-aligned threads, teacher-led curation, peer replies, and durable institutional archives.</p>
+          <div class="hero-actions">
+            <a class="button" href="#auth">Establish Account</a>
+            <a class="button secondary" href="#auth">Enter Community</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="feature-band">
+        <div class="page features">
+          <article class="feature">
+            <h2>Peer-Reviewed Flow</h2>
+            <p>Long-form questions, replies, supports, and bookmarks are structured for serious academic exchange.</p>
+          </article>
+          <article class="feature">
+            <h2>Teacher-Led Curation</h2>
+            <p>Faculty roles help identify stronger answers and keep high-quality explanations visible.</p>
+          </article>
+          <article class="feature">
+            <h2>Archival Persistence</h2>
+            <p>Threads remain searchable by curriculum, institution, and discipline for future cohorts.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="page auth-band" id="auth">
+        <aside class="auth-side">
+          <p class="eyebrow">Welcome Back</p>
+          <h2>Sign in to contribute.</h2>
+          <p class="lead">Reading is open. Posting, replying, supporting, and bookmarking require an account.</p>
+          <form data-login-form>
+            <div class="field">
+              <label for="login-email">Institutional Email</label>
+              <input id="login-email" name="email" type="email" placeholder="name@school.edu" required />
+            </div>
+            <div class="field">
+              <label for="login-password">Password</label>
+              <input id="login-password" name="password" type="password" placeholder="Password" required />
+            </div>
+            <button class="button" type="submit">Sign In To Community</button>
+            <p class="form-message" data-login-message></p>
+          </form>
+          <details class="auth-utility">
+            <summary>Password reset</summary>
+            <form data-reset-request-form>
+              <div class="field">
+                <label for="reset-email">Institutional Email</label>
+                <input id="reset-email" name="email" type="email" placeholder="name@school.edu" />
+              </div>
+              <button class="button secondary" type="submit">Email Reset Code</button>
+            </form>
+            <form data-reset-form>
+              <div class="field">
+                <label for="reset-token">Reset Token</label>
+                <input id="reset-token" name="token" placeholder="Paste reset token" />
+              </div>
+              <div class="field">
+                <label for="reset-password">New Password</label>
+                <input id="reset-password" name="password" type="password" placeholder="Minimum 12 characters" />
+              </div>
+              <button class="button" type="submit">Update Password</button>
+              <p class="form-message" data-reset-message></p>
+            </form>
+          </details>
+        </aside>
+
+        <section class="auth-card">
+          <p class="eyebrow">New Profile</p>
+          <h2>Establish New Profile</h2>
+          <p class="lead">Join the academic ecosystem and start contributing to your school's discourse archive.</p>
+          <form data-register-form>
+            <div class="form-grid">
+              <div class="field">
+                <label for="register-name">Full Name</label>
+                <input id="register-name" name="name" placeholder="Amina Khan" required />
+              </div>
+              <div class="field">
+                <label for="register-email">Institutional Email</label>
+                <input id="register-email" name="email" type="email" placeholder="amina@school.edu" required />
+              </div>
+              <div class="field wide">
+                <label for="register-institution">Academic Institution</label>
+                <div class="autocomplete" data-institution-autocomplete>
+                  <input id="register-institution" name="institution" autocomplete="new-password" autocapitalize="words" spellcheck="false" placeholder="Start typing your school" required />
+                  <input type="hidden" name="institution_country" data-institution-country />
+                  <input type="hidden" name="institution_domain" data-institution-domain />
+                  <input type="hidden" name="curricula" data-institution-curricula />
+                  <div class="autocomplete-menu" data-institution-results></div>
+                </div>
+              </div>
+              <div class="field">
+                <label for="register-role">Role Designation</label>
+                <div class="custom-select" data-static-select>
+                  <input type="hidden" id="register-role" name="role" value="student" />
+                  <button class="custom-select-button" type="button">Student</button>
+                  <div class="custom-select-menu">
+                    <button class="custom-option active" type="button" data-value="student">Student</button>
+                    <button class="custom-option" type="button" data-value="teacher">Teacher</button>
+                    <button class="custom-option" type="button" data-value="staff">Staff</button>
+                  </div>
+                </div>
+              </div>
+              <div class="field">
+                <label for="register-password">Password</label>
+                <input id="register-password" name="password" type="password" placeholder="Minimum 12 characters" required />
+              </div>
+              <div class="field wide">
+                <label for="register-join-key">School Join Key</label>
+                <input id="register-join-key" name="join_key" type="text" autocomplete="off" placeholder="Only required if your school has enabled one" />
+              </div>
+            </div>
+            <button class="button" type="submit">Request Access To Registry</button>
+            <p class="form-message" data-register-message></p>
+          </form>
+          <details class="auth-utility hidden" data-post-register-verification>
+            <summary>Email verification</summary>
+            <p class="verification-note">Submit your profile details first. Studera will email a verification code to your institutional address.</p>
+            <form data-verify-form>
+              <div class="field">
+                <label for="verify-token-home">Verification Code</label>
+                <input id="verify-token-home" name="token" autocomplete="one-time-code" placeholder="Enter the code from your email" />
+              </div>
+              <button class="button" type="submit">Verify Email</button>
+              <p class="form-message" data-verify-message></p>
+            </form>
+          </details>
+        </section>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div><span class="brand">Studera</span><span>© 2026 Studera Academic Press</span></div>
+        <nav><a href="#">Honor Code</a><a href="#">Faculty Guidelines</a><a href="#">Privacy Archive</a><a href="#">Community Guidelines</a></nav>
+      </div>
+    </footer>
+    <div class="toast" data-toast></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="react-shell.js?v=20260507-security-hardening-v84"></script>
+    <script src="app.js?v=20260507-security-hardening-v84"></script>
+  </body>
+</html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studera | Contact</title>
+    <link rel="stylesheet" href="styles.css?v=20260507-security-hardening-v84" />
+  </head>
+  <body data-page="contact" data-build="20260507-security-hardening-v84">
+    <nav class="site-nav">
+      <div class="nav-inner">
+        <a class="brand" href="index.html">Studera</a>
+        <button class="mobile-menu" data-menu-toggle type="button">Menu</button>
+        <div class="nav-links">
+          <a data-nav-about href="about.html">About</a>
+          <a class="active" data-nav-contact href="contact.html">Contact</a>
+        </div>
+        <div class="nav-actions">
+          <button class="primary" data-auth-open type="button">Sign In</button>
+          <button class="hidden" data-logout type="button">Sign Out</button>
+        </div>
+      </div>
+    </nav>
+    <script>
+      document.querySelector(".nav-links").innerHTML = '<a data-nav-about href="about.html">About</a><a class="active" data-nav-contact href="contact.html">Contact</a>';
+    </script>
+
+    <main class="page public-page">
+      <section class="public-hero">
+        <p class="eyebrow">Contact</p>
+        <h1>Bring Studera into a school archive.</h1>
+        <p>For school onboarding, admin access, curriculum setup, or privacy questions, contact the Studera team with your school name, role, and institutional email domain.</p>
+      </section>
+      <section class="settings-panel contact-panel">
+        <div>
+          <p class="eyebrow">Institutional Access</p>
+          <h2>Start with school details</h2>
+          <p>Email: access@studera.local</p>
+          <p>Include the school name, country, email domain, curriculum families, and the first admin account to provision.</p>
+        </div>
+        <a class="button" href="index.html#auth">Create Account</a>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div><span class="brand">Studera</span><span>© 2026 Studera Academic Press</span></div>
+        <nav><a href="#">Honor Code</a><a href="#">Faculty Guidelines</a><a href="#">Privacy Archive</a><a href="#">Community Guidelines</a></nav>
+      </div>
+    </footer>
+    <div class="toast" data-toast></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="react-shell.js?v=20260507-security-hardening-v84"></script>
+    <script src="app.js?v=20260507-security-hardening-v84"></script>
+  </body>
+</html>

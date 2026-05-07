@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studera | Site Admin</title>
+    <link rel="stylesheet" href="styles.css?v=20260507-security-hardening-v84" />
+  </head>
+  <body data-page="site-admin" data-build="20260507-security-hardening-v84">
+    <nav class="site-nav">
+      <div class="nav-inner">
+        <a class="brand" href="site-admin.html">Studera</a>
+        <button class="mobile-menu" data-menu-toggle type="button">Menu</button>
+        <div class="nav-links">
+          <a class="active" data-nav-site-admin href="site-admin.html">Site Admin</a>
+          <a data-nav-settings href="settings.html">Settings</a>
+        </div>
+        <div class="nav-actions">
+          <button class="primary" data-auth-open type="button">Sign In</button>
+          <button class="hidden" data-logout type="button">Sign Out</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="page settings-layout">
+      <aside class="settings-sidebar">
+        <p class="eyebrow">Global Office</p>
+        <h1>Site Admin</h1>
+        <nav>
+          <a href="#overview">Overview</a>
+          <a href="#schools">Schools</a>
+          <a href="#school-admins">School Admins</a>
+          <a href="#site-admins">Site Admins</a>
+          <a href="#audit">Audit</a>
+          <a href="#backups">Backups</a>
+          <a href="#privacy">Privacy</a>
+        </nav>
+      </aside>
+
+      <section class="settings-main">
+        <section class="panel center" data-site-admin-guest>
+          <div>
+            <h2>Sign in required</h2>
+            <p>The global administration console is restricted to approved Studera site admins.</p>
+            <a class="button" href="index.html#auth">Sign In</a>
+          </div>
+        </section>
+
+        <section class="panel center hidden" data-site-admin-denied>
+          <div>
+            <h2>Site admin access required</h2>
+            <p>This console manages schools and admin assignments. Forum accounts cannot access it.</p>
+          </div>
+        </section>
+
+        <section class="settings-form hidden" data-site-admin-dashboard>
+          <section class="settings-panel" id="overview">
+            <div>
+              <p class="eyebrow">Network Overview</p>
+              <h2>Studera Administration</h2>
+              <p>Manage schools, curriculum availability, join keys, and admin assignments without entering school forum spaces.</p>
+            </div>
+            <div class="metric-grid" data-site-metrics></div>
+            <p class="form-message" data-site-admin-message></p>
+          </section>
+
+          <section class="settings-panel" id="schools">
+            <div>
+              <p class="eyebrow">School Registry</p>
+              <h2>Schools</h2>
+              <p>Create or update a school profile, curriculum access, school guidelines, and join key state.</p>
+            </div>
+            <form data-site-school-form>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="site-school-name">School Name</label>
+                  <div class="autocomplete" data-institution-autocomplete data-curricula-target="curricula">
+                    <input id="site-school-name" name="institution" autocomplete="new-password" autocapitalize="words" spellcheck="false" placeholder="Start typing your school" required />
+                    <div class="autocomplete-menu" data-institution-results></div>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="site-school-country">Country / Region</label>
+                  <input id="site-school-country" name="institution_country" placeholder="Singapore" />
+                </div>
+                <div class="field wide">
+                  <label for="site-school-domain">School Email Domain</label>
+                  <input id="site-school-domain" name="institution_domain" placeholder="sas.edu.sg" />
+                </div>
+                <div class="field wide">
+                  <label>Enabled Curricula</label>
+                  <div class="check-grid" data-site-school-curricula></div>
+                </div>
+                <div class="field">
+                  <label for="site-school-join-key">Join Key</label>
+                  <input id="site-school-join-key" name="join_key" autocomplete="off" placeholder="Leave blank to keep current key" />
+                </div>
+                <label class="toggle-row">
+                  <input name="clear_join_key" type="checkbox" />
+                  <span></span>
+                  Clear existing join key
+                </label>
+                <label class="toggle-row">
+                  <input name="regenerate_join_key" type="checkbox" />
+                  <span></span>
+                  Regenerate join key automatically
+                </label>
+                <div class="field wide">
+                  <label for="site-school-guidelines">School Guidelines</label>
+                  <textarea id="site-school-guidelines" name="guidelines" maxlength="1200" placeholder="School-wide posting or moderation notes."></textarea>
+                </div>
+              </div>
+              <button class="button" type="submit">Save School</button>
+              <p class="form-message" data-site-school-message></p>
+            </form>
+            <div class="admin-list" data-site-schools></div>
+          </section>
+
+          <section class="settings-panel" id="school-admins">
+            <div>
+              <p class="eyebrow">School Admins</p>
+              <h2>Admin Assignments</h2>
+              <p>Grant or revoke school-level admin access. School admins can moderate only their own school.</p>
+            </div>
+            <form data-site-grant-school-admin-form>
+              <div class="form-grid">
+                <div class="field wide">
+                  <label for="site-grant-email">Account Email</label>
+                  <input id="site-grant-email" name="email" type="email" placeholder="account@school.edu" required />
+                </div>
+                <div class="field">
+                  <label for="site-grant-school">School Name</label>
+                  <div class="autocomplete" data-institution-autocomplete data-curricula-target="grant_curricula">
+                    <input id="site-grant-school" name="institution" autocomplete="new-password" autocapitalize="words" spellcheck="false" placeholder="Start typing your school" required />
+                    <div class="autocomplete-menu" data-institution-results></div>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="site-grant-country">Country / Region</label>
+                  <input id="site-grant-country" name="institution_country" placeholder="Singapore" />
+                </div>
+                <div class="field wide">
+                  <label for="site-grant-domain">School Email Domain</label>
+                  <input id="site-grant-domain" name="institution_domain" placeholder="sas.edu.sg" />
+                </div>
+                <div class="field wide">
+                  <label>Curricula For This School</label>
+                  <div class="check-grid" data-site-grant-curricula></div>
+                </div>
+              </div>
+              <button class="button" type="submit">Grant School Admin</button>
+              <p class="form-message" data-site-grant-message></p>
+            </form>
+            <div class="admin-list" data-site-school-admins></div>
+          </section>
+
+          <section class="settings-panel" id="site-admins">
+            <div>
+              <p class="eyebrow">Global Admins</p>
+              <h2>Site Admin Accounts</h2>
+              <p>Site admins can manage schools and admin accounts, but forum thread APIs remain blocked.</p>
+            </div>
+            <form class="inline-admin-form" data-site-grant-site-admin-form>
+              <input name="email" type="email" placeholder="account@studera.org" required />
+              <button class="button" type="submit">Grant Site Admin</button>
+            </form>
+            <p class="form-message" data-site-root-message></p>
+            <div class="admin-list" data-site-site-admins></div>
+          </section>
+
+          <section class="settings-panel" id="audit">
+            <div>
+              <p class="eyebrow">Global Trust Ledger</p>
+              <h2>Audit Log</h2>
+              <p>The five latest overarching admin actions are shown here. The full ledger separates site-admin and school-admin actions.</p>
+            </div>
+            <div class="admin-list" data-site-audit></div>
+          </section>
+
+          <section class="settings-panel" id="backups">
+            <div>
+              <p class="eyebrow">Backups</p>
+              <h2>Platform export</h2>
+              <p>Download a privacy-preserving platform backup with schools, admin assignments, and counts only.</p>
+            </div>
+            <button class="button" data-site-backup type="button">Export Platform Backup</button>
+          </section>
+
+          <section class="settings-panel" id="privacy">
+            <div>
+              <p class="eyebrow">Privacy Boundary</p>
+              <h2>Forum Firewall</h2>
+              <p>Global admins see aggregate counts and account records only. They cannot browse, open, reply to, support, bookmark, edit, or delete individual school threads.</p>
+            </div>
+            <div class="admin-list" data-site-privacy></div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div><span class="brand">Studera</span><span>© 2026 Studera Academic Press</span></div>
+        <nav><a href="#">Honor Code</a><a href="#">Faculty Guidelines</a><a href="#">Privacy Archive</a><a href="#">Community Guidelines</a></nav>
+      </div>
+    </footer>
+    <div class="toast" data-toast></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="react-shell.js?v=20260507-security-hardening-v84"></script>
+    <script src="app.js?v=20260507-security-hardening-v84"></script>
+  </body>
+</html>

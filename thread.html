@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studera | Thread</title>
+    <link rel="stylesheet" href="styles.css?v=20260507-security-hardening-v84" />
+  </head>
+  <body data-page="thread" data-build="20260507-security-hardening-v84">
+    <nav class="site-nav">
+      <div class="nav-inner">
+        <a class="brand" href="index.html">Studera</a>
+        <button class="mobile-menu" data-menu-toggle type="button">Menu</button>
+        <div class="nav-links">
+          <a class="active" data-nav-feed href="feed.html">Feed</a>
+          <a data-nav-bookmarked href="feed.html?bookmarked=1">Bookmarked</a>
+          <a data-nav-settings href="settings.html">Settings</a>
+        </div>
+        <div class="nav-actions">
+          <button class="primary" data-auth-open type="button">Sign In</button>
+          <button class="hidden" data-logout type="button">Sign Out</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="page thread-layout">
+      <aside class="sidebar">
+        <h1>Curricula</h1>
+        <p class="filter-copy">Academic Filters</p>
+        <div class="filter-list">
+          <a class="filter-item active" data-curriculum="" href="feed.html">All Threads</a>
+          <a class="filter-item" data-curriculum="AP Curriculum" href="feed.html?curriculum=AP%20Curriculum">AP Curriculum</a>
+          <a class="filter-item" data-curriculum="IB Diploma" href="feed.html?curriculum=IB%20Diploma">IB Diploma</a>
+          <a class="filter-item" data-curriculum="A-Levels" href="feed.html?curriculum=A-Levels">A-Levels</a>
+          <a class="filter-item" data-curriculum="SAT / ACT" href="feed.html?curriculum=SAT%20%2F%20ACT">SAT / ACT</a>
+          <a class="filter-item" data-curriculum="GCSE" href="feed.html?curriculum=GCSE">GCSE</a>
+          <a class="filter-item" data-curriculum="Research" href="feed.html?curriculum=Research">Research</a>
+        </div>
+      </aside>
+
+      <section class="thread-main" data-thread-view>
+        <section class="empty-state">
+          <div>
+            <div class="empty-mark">▧</div>
+            <h2>No thread selected</h2>
+            <p>Open a discussion from the feed, or create the first community thread.</p>
+            <p><a class="button" href="feed.html">Return to Feed</a></p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div><span class="brand">Studera</span><span>© 2026 Studera Academic Press</span></div>
+        <nav><a href="#">Journal Index</a><a href="#">Ethics Policy</a><a href="#">Community Archive</a><a href="#">Faculty Directory</a></nav>
+      </div>
+    </footer>
+    <div class="toast" data-toast></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="react-shell.js?v=20260507-security-hardening-v84"></script>
+    <script src="app.js?v=20260507-security-hardening-v84"></script>
+  </body>
+</html>

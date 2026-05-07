@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studera | About</title>
+    <link rel="stylesheet" href="styles.css?v=20260507-security-hardening-v84" />
+  </head>
+  <body data-page="about" data-build="20260507-security-hardening-v84">
+    <nav class="site-nav">
+      <div class="nav-inner">
+        <a class="brand" href="index.html">Studera</a>
+        <button class="mobile-menu" data-menu-toggle type="button">Menu</button>
+        <div class="nav-links">
+          <a class="active" data-nav-about href="about.html">About</a>
+          <a data-nav-contact href="contact.html">Contact</a>
+        </div>
+        <div class="nav-actions">
+          <button class="primary" data-auth-open type="button">Sign In</button>
+          <button class="hidden" data-logout type="button">Sign Out</button>
+        </div>
+      </div>
+    </nav>
+    <script>
+      document.querySelector(".nav-links").innerHTML = '<a class="active" data-nav-about href="about.html">About</a><a data-nav-contact href="contact.html">Contact</a>';
+    </script>
+
+    <main class="page public-page">
+      <section class="public-hero">
+        <p class="eyebrow">About Studera</p>
+        <h1>Academic discussion, held inside the right school community.</h1>
+        <p>Studera is built for curriculum-aligned questions, teacher and staff moderation, durable archives, and thoughtful peer replies. Each school keeps its own forum space so students can learn with the people who share their courses, expectations, and institutional context.</p>
+      </section>
+      <section class="features public-features">
+        <article class="feature">
+          <h2>School-Bound Forums</h2>
+          <p>Members communicate only within their own school, and threads stay attached to the school where they were created.</p>
+        </article>
+        <article class="feature">
+          <h2>Scholarly Archives</h2>
+          <p>Threads, replies, supports, bookmarks, and uploads create a searchable academic record for future cohorts.</p>
+        </article>
+        <article class="feature">
+          <h2>Moderated Trust</h2>
+          <p>School admins manage curricula, join keys, reports, thread status, and audit logs without exposing other schools.</p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div><span class="brand">Studera</span><span>© 2026 Studera Academic Press</span></div>
+        <nav><a href="#">Honor Code</a><a href="#">Faculty Guidelines</a><a href="#">Privacy Archive</a><a href="#">Community Guidelines</a></nav>
+      </div>
+    </footer>
+    <div class="toast" data-toast></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="react-shell.js?v=20260507-security-hardening-v84"></script>
+    <script src="app.js?v=20260507-security-hardening-v84"></script>
+  </body>
+</html>

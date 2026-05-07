@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Studera | Audit Log</title>
+    <link rel="stylesheet" href="styles.css?v=20260507-security-hardening-v84" />
+  </head>
+  <body data-page="audit" data-build="20260507-security-hardening-v84">
+    <nav class="site-nav">
+      <div class="nav-inner">
+        <a class="brand" href="index.html">Studera</a>
+        <button class="mobile-menu" data-menu-toggle type="button">Menu</button>
+        <div class="nav-links">
+          <a data-nav-feed href="feed.html">Feed</a>
+          <a data-nav-bookmarked href="feed.html?bookmarked=1">Bookmarked</a>
+          <a data-nav-admin href="admin.html">Admin</a>
+          <a data-nav-site-admin href="site-admin.html">Site Admin</a>
+          <a data-nav-settings href="settings.html">Settings</a>
+        </div>
+        <div class="nav-actions">
+          <button class="primary" data-auth-open type="button">Sign In</button>
+          <button class="hidden" data-logout type="button">Sign Out</button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="page profile-page">
+      <header class="page-title">
+        <div>
+          <p class="eyebrow">Trust Ledger</p>
+          <h1 data-audit-title>Audit Log</h1>
+          <p class="lead" data-audit-lead>Admin actions grouped by day.</p>
+        </div>
+      </header>
+
+      <section class="panel center" data-audit-guest>
+        <div>
+          <h2>Sign in required</h2>
+          <p>Audit logs are available only to approved admin accounts.</p>
+          <a class="button" href="index.html#auth">Sign In</a>
+        </div>
+      </section>
+
+      <section class="panel center hidden" data-audit-denied>
+        <div>
+          <h2>Admin access required</h2>
+          <p>Your account does not have permission to view audit logs.</p>
+        </div>
+      </section>
+
+      <section class="audit-page hidden" data-audit-view></section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <div><span class="brand">Studera</span><span>© 2026 Studera Academic Press</span></div>
+        <nav><a href="#">Honor Code</a><a href="#">Faculty Guidelines</a><a href="#">Privacy Archive</a><a href="#">Community Guidelines</a></nav>
+      </div>
+    </footer>
+    <div class="toast" data-toast></div>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="react-shell.js?v=20260507-security-hardening-v84"></script>
+    <script src="app.js?v=20260507-security-hardening-v84"></script>
+  </body>
+</html>
