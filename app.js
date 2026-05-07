@@ -10,6 +10,7 @@ const state = {
   filter: new URLSearchParams(location.search).get("curriculum") || "",
   bookmarkedOnly: new URLSearchParams(location.search).get("bookmarked") === "1",
   schoolAbort: null,
+  pendingVerificationEmail: "",
 };
 
 const ALL_CURRICULA = ["AP Curriculum", "IB Diploma", "A-Levels", "SAT / ACT", "GCSE", "Research"];
@@ -782,6 +783,7 @@ function installAuthForms() {
       if (result.requires_verification) {
         state.user = null;
         state.school = null;
+        state.pendingVerificationEmail = result.verification_email || data.email || "";
         setCustomSections([]);
         updateAuthUI();
         if (verificationStep) {
@@ -821,6 +823,7 @@ function installAuthForms() {
       const result = await api("/api/auth/register", { method: "POST", body: JSON.stringify(data) });
       if (result.requires_verification) {
         state.user = null;
+        state.pendingVerificationEmail = result.verification_email || data.email || "";
         updateAuthUI();
         if (verificationStep) {
           verificationStep.classList.remove("hidden");
@@ -864,6 +867,19 @@ function installAuthForms() {
     try {
       const result = await api("/api/auth/request-verification", { method: "POST", body: "{}" });
       setMessage("[data-verify-message]", result.already_verified ? "Your email is already verified." : `Verification email sent to ${result.email || "your address"}.`, "ok");
+    } catch (error) {
+      setMessage("[data-verify-message]", error.message, "error");
+    }
+  });
+
+  $("[data-resend-verification]")?.addEventListener("click", async () => {
+    const email = state.pendingVerificationEmail || $("#register-email")?.value || $("#login-email")?.value || "";
+    try {
+      const result = await api("/api/auth/resend-verification", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+      setMessage("[data-verify-message]", result.sent ? `Verification email resent to ${result.email || email}. Check spam or school mail filters if it does not arrive.` : result.message, "ok");
     } catch (error) {
       setMessage("[data-verify-message]", error.message, "error");
     }

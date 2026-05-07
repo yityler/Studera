@@ -770,7 +770,10 @@ def send_email(to_email, subject, body):
             smtp.starttls()
         if SMTP_USER:
             smtp.login(SMTP_USER, SMTP_PASSWORD)
-        smtp.send_message(message)
+        refused = smtp.send_message(message)
+        if refused:
+            refused_list = ", ".join(refused.keys())
+            raise RuntimeError(f"Email provider refused recipient: {refused_list}")
     return True
 
 
@@ -1333,6 +1336,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.logout()
         if parsed.path == "/api/auth/request-verification":
             return self.request_verification()
+        if parsed.path == "/api/auth/resend-verification":
+            return self.resend_verification()
         if parsed.path == "/api/auth/verify":
             return self.verify_email()
         if parsed.path == "/api/auth/request-password-reset":
@@ -1513,6 +1518,28 @@ class Handler(SimpleHTTPRequestHandler):
                 conn.execute("DELETE FROM auth_tokens WHERE token = ? AND purpose = 'verify_email'", (token,))
             return self.send_json({"error": verification_delivery_error()}, HTTPStatus.BAD_GATEWAY)
         return self.send_json({"ok": True, "sent": True, "email": user.get("email", "")})
+
+    def resend_verification(self):
+        data = self.read_json()
+        email = str(data.get("email", "")).strip().lower()
+        if not email:
+            return self.send_json({"error": "Email is required."}, HTTPStatus.BAD_REQUEST)
+        if rate_limited(f"verify-resend:{self.client_address[0]}:{email}", 3, 300):
+            return self.send_json({"error": "Too many verification email requests. Try again in a few minutes."}, HTTPStatus.TOO_MANY_REQUESTS)
+        with db() as conn:
+            row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+            if not row or safe_row_value(row, "email_verified", 1):
+                return self.send_json({
+                    "ok": True,
+                    "sent": False,
+                    "message": "If that unverified account exists, a new verification code has been emailed.",
+                })
+            token = create_auth_token(conn, row["id"], "verify_email", 7 * 24 * 60 * 60)
+        if not send_verification_email(row, token):
+            with db() as conn:
+                conn.execute("DELETE FROM auth_tokens WHERE token = ? AND purpose = 'verify_email'", (token,))
+            return self.send_json({"error": verification_delivery_error()}, HTTPStatus.BAD_GATEWAY)
+        return self.send_json({"ok": True, "sent": True, "email": email})
 
     def verify_email(self):
         data = self.read_json()
