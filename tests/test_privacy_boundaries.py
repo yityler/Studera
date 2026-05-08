@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import http.cookiejar
+import base64
 import json
 import os
 import sys
@@ -47,6 +48,7 @@ class StuderaPrivacyTests(unittest.TestCase):
         os.environ["STUDERA_SECONDARY_SITE_ADMIN_EMAIL"] = "studeraadmin@gmail.com"
         os.environ["STUDERA_SECONDARY_SITE_ADMIN_PASSWORD"] = "test-secondary-site-admin-password"
         server.DB_PATH = os.path.join(cls.tmp.name, "studera-test.db")
+        server.UPLOADS_DIR = os.path.join(cls.tmp.name, "uploads")
         server.EMAIL_DEV_LOG = True
         server.RATE_LIMITS.clear()
         server.init_db()
@@ -205,6 +207,27 @@ class StuderaPrivacyTests(unittest.TestCase):
         school_b = self.register_verified("bob@example-b.edu", "Example B School", "example-b.edu", "IB Diploma")
         status, data = school_b.request("GET", f"/api/threads/{thread_id}")
         self.assertEqual(status, 404)
+
+    def test_thread_uploads_are_served_from_configured_upload_directory(self):
+        client = self.register_verified("upload-author@example-v.edu", "Example V School", "example-v.edu")
+        encoded = base64.b64encode(b"Studera upload fixture").decode()
+        status, data = client.request("POST", "/api/threads", {
+            "title": "Upload fixture",
+            "body": "Testing upload serving.",
+            "curriculum": "AP Curriculum",
+            "section": "AP Biology",
+            "files": [{
+                "file_name": "fixture.txt",
+                "file_data": f"data:text/plain;base64,{encoded}",
+            }],
+        })
+        self.assertEqual(status, 200, data)
+        path = data["thread"]["attachments"][0]["path"]
+        self.assertTrue(path.startswith("uploads/"))
+        self.assertTrue(os.path.exists(os.path.join(server.UPLOADS_DIR, os.path.basename(path))))
+        with urllib.request.urlopen(f"{self.base}/{path}", timeout=5) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.read(), b"Studera upload fixture")
 
     def test_school_admin_cannot_moderate_other_school(self):
         school_a = self.register_verified("moderated@example-c.edu", "Example C School", "example-c.edu")

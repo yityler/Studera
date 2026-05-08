@@ -691,6 +691,7 @@ function updateNavState() {
   if (document.body.dataset.page === "contact") {
     $("[data-nav-contact]")?.classList.add("active");
   }
+  $all("[data-nav-help]").forEach((link) => link.classList.toggle("active", document.body.dataset.page === "help"));
   if (document.body.dataset.page === "admin") {
     $("[data-nav-admin]")?.classList.add("active");
   }
@@ -707,7 +708,7 @@ async function loadSession() {
   state.user = data.user;
   state.school = data.school || null;
   const page = document.body.dataset.page;
-  const publicPages = ["home", "about", "contact"];
+  const publicPages = ["home", "about", "contact", "help"];
   if (state.user?.is_site_admin && ["home", "feed", "thread", "admin"].includes(page)) {
     location.replace("site-admin.html");
     return;

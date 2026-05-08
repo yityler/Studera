@@ -480,6 +480,65 @@ def init_db():
             pass
         conn.execute("UPDATE users SET email_verified = 1 WHERE email_verified IS NULL")
         conn.execute("DELETE FROM pending_registrations WHERE expires_at < ?", (now(),))
+        old_unverified = conn.execute(
+            """
+            SELECT *
+            FROM users
+            WHERE COALESCE(email_verified, 0) = 0
+              AND COALESCE(is_site_admin, 0) = 0
+            """
+        ).fetchall()
+        for row in old_unverified:
+            token_row = conn.execute(
+                """
+                SELECT token, expires_at, created_at
+                FROM auth_tokens
+                WHERE user_id = ? AND purpose = 'verify_email' AND used_at = 0 AND expires_at >= ?
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (row["id"], now()),
+            ).fetchone()
+            verify_token = token_row["token"] if token_row else secrets.token_urlsafe(32)
+            expires_at = token_row["expires_at"] if token_row else now() + 7 * 24 * 60 * 60
+            created_at = token_row["created_at"] if token_row else now()
+            conn.execute(
+                """
+                INSERT INTO pending_registrations (
+                  email, token, name, institution, institution_country, institution_domain,
+                  curricula, role, salt, password_hash, expires_at, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(email) DO UPDATE SET
+                  token = excluded.token,
+                  name = excluded.name,
+                  institution = excluded.institution,
+                  institution_country = excluded.institution_country,
+                  institution_domain = excluded.institution_domain,
+                  curricula = excluded.curricula,
+                  role = excluded.role,
+                  salt = excluded.salt,
+                  password_hash = excluded.password_hash,
+                  expires_at = excluded.expires_at,
+                  created_at = excluded.created_at
+                """,
+                (
+                    row["email"],
+                    verify_token,
+                    row["name"],
+                    row["institution"],
+                    row["institution_country"] or "",
+                    row["institution_domain"] or "",
+                    row["curricula"] or "",
+                    row["role"] if row["role"] in ("student", "teacher", "staff") else "student",
+                    row["salt"],
+                    row["password_hash"],
+                    expires_at,
+                    created_at,
+                ),
+            )
+            conn.execute("DELETE FROM sessions WHERE user_id = ?", (row["id"],))
+            conn.execute("DELETE FROM auth_tokens WHERE user_id = ?", (row["id"],))
+            conn.execute("DELETE FROM users WHERE id = ?", (row["id"],))
         conn.execute("UPDATE threads SET status = 'open' WHERE status IS NULL OR status = ''")
         conn.execute("""
             UPDATE threads
@@ -1007,6 +1066,17 @@ def save_upload(data_url, original_name=""):
     return f"uploads/{filename}", clean_name or "Attachment", mime
 
 
+def upload_disk_path(relative_path):
+    normalized = os.path.normpath(str(relative_path or "").lstrip("/"))
+    if normalized == "uploads":
+        return UPLOADS_DIR
+    if normalized.startswith("uploads/"):
+        filename = normalized[len("uploads/"):]
+        if filename and not filename.startswith("../"):
+            return os.path.join(UPLOADS_DIR, filename)
+    return None
+
+
 def upload_payloads(data):
     files = data.get("files")
     if not isinstance(files, list):
@@ -1105,10 +1175,9 @@ def merge_attachments(row, attachments=None):
 def delete_upload(relative_path):
     if not relative_path:
         return
-    normalized = os.path.normpath(str(relative_path))
-    if normalized.startswith("..") or not normalized.startswith("uploads/"):
+    path = upload_disk_path(relative_path)
+    if not path:
         return
-    path = os.path.join(ROOT, normalized)
     try:
         if os.path.isfile(path):
             os.remove(path)
@@ -1156,6 +1225,9 @@ class Handler(SimpleHTTPRequestHandler):
     def translate_path(self, path):
         parsed = urlparse(path)
         clean = parsed.path.lstrip("/") or "index.html"
+        upload_path = upload_disk_path(clean)
+        if upload_path:
+            return upload_path
         return os.path.join(ROOT, clean)
 
     def send_json(self, data, status=HTTPStatus.OK, cookie=None):

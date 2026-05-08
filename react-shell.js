@@ -77,6 +77,7 @@
       h("button", { className: "mobile-menu", type: "button", onClick: () => setOpen(!open) }, "Menu"),
       h("div", { className: "nav-links" }, navLinks),
       h("div", { className: "nav-actions" },
+        h("a", { className: `nav-help${page === "help" ? " active" : ""}`, href: "help.html", "data-nav-help": true }, "Help"),
         h("button", {
           className: "primary",
           type: "button",
