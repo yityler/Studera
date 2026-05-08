@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Studera">
+  <rect width="64" height="64" rx="10" fill="#f8fafc"/>
+  <rect x="2" y="2" width="60" height="60" rx="8" fill="none" stroke="#1a365d" stroke-width="3"/>
+  <text x="32" y="45" text-anchor="middle" font-family="Newsreader, Georgia, serif" font-size="43" font-style="italic" font-weight="700" fill="#1a365d">S</text>
+</svg>
