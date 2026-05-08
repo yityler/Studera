@@ -786,6 +786,7 @@ def send_email(to_email, subject, body):
         if refused:
             refused_list = ", ".join(refused.keys())
             raise RuntimeError(f"Email provider refused recipient: {refused_list}")
+    print(f"[Studera email] Sent '{subject}' to {to_email}", flush=True)
     return True
 
 
@@ -1504,7 +1505,23 @@ class Handler(SimpleHTTPRequestHandler):
                 session_token = ""
                 row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
         except sqlite3.IntegrityError:
-            return self.send_json({"error": "That email is already registered."}, HTTPStatus.CONFLICT)
+            with db() as conn:
+                row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+                if row and not safe_row_value(row, "email_verified", 1):
+                    verify_token = create_auth_token(conn, row["id"], "verify_email", 7 * 24 * 60 * 60)
+                else:
+                    verify_token = ""
+            if verify_token:
+                if not send_verification_email(row, verify_token):
+                    with db() as conn:
+                        conn.execute("DELETE FROM auth_tokens WHERE token = ? AND purpose = 'verify_email'", (verify_token,))
+                    return self.send_json({"error": verification_delivery_error()}, HTTPStatus.BAD_GATEWAY)
+                return self.send_json({
+                    "requires_verification": True,
+                    "verification_email": email,
+                    "message": "That profile already exists but still needs email verification. We sent a new code.",
+                })
+            return self.send_json({"error": "That email is already registered. Sign in instead."}, HTTPStatus.CONFLICT)
         cookie = session_cookie(session_token) if session_token else None
         payload = {}
         if verify_token:
