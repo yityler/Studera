@@ -16,9 +16,18 @@ import sqlite3
 import time
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(ROOT, "studera.db")
+
+
+def configured_path(env_name, fallback):
+    value = os.environ.get(env_name, "").strip()
+    if not value:
+        return fallback
+    return os.path.abspath(os.path.expanduser(value))
+
+
+DB_PATH = configured_path("STUDERA_DB_PATH", os.path.join(ROOT, "studera.db"))
 INSTITUTIONS_PATH = os.path.join(ROOT, "institutions.json")
-UPLOADS_DIR = os.path.join(ROOT, "uploads")
+UPLOADS_DIR = configured_path("STUDERA_UPLOADS_DIR", os.path.join(ROOT, "uploads"))
 SESSION_COOKIE = "studera_session"
 INSTITUTIONS_CACHE = None
 RATE_LIMITS = {}
@@ -123,6 +132,9 @@ CURATED_SCHOOLS = [
 
 
 def db():
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir:
+        os.makedirs(db_dir, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
