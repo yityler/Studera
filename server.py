@@ -347,6 +347,21 @@ def init_db():
               created_at INTEGER NOT NULL,
               FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             );
+            CREATE TABLE IF NOT EXISTS pending_registrations (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              email TEXT NOT NULL UNIQUE,
+              token TEXT NOT NULL UNIQUE,
+              name TEXT NOT NULL,
+              institution TEXT NOT NULL,
+              institution_country TEXT DEFAULT '',
+              institution_domain TEXT DEFAULT '',
+              curricula TEXT DEFAULT '',
+              role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'staff')),
+              salt TEXT NOT NULL,
+              password_hash TEXT NOT NULL,
+              expires_at INTEGER NOT NULL,
+              created_at INTEGER NOT NULL
+            );
             """
         )
         role_schema = conn.execute("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'").fetchone()
@@ -464,6 +479,7 @@ def init_db():
         except sqlite3.OperationalError:
             pass
         conn.execute("UPDATE users SET email_verified = 1 WHERE email_verified IS NULL")
+        conn.execute("DELETE FROM pending_registrations WHERE expires_at < ?", (now(),))
         conn.execute("UPDATE threads SET status = 'open' WHERE status IS NULL OR status = ''")
         conn.execute("""
             UPDATE threads
@@ -1471,70 +1487,65 @@ class Handler(SimpleHTTPRequestHandler):
         if not curricula:
             return self.send_json({"error": "Choose your school from the suggestions so Studera can assign its curriculum."}, HTTPStatus.BAD_REQUEST)
         salt, digest = hash_password(data["password"])
-        try:
+        with db() as conn:
+            existing = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+            if existing and safe_row_value(existing, "email_verified", 1):
+                return self.send_json({"error": "That email is already registered. Sign in instead."}, HTTPStatus.CONFLICT)
+            if existing:
+                delete_user_account_records(conn, existing, audit_action="delete_unverified_registration")
+            school = school_settings_for(conn, data["institution"].strip(), str(data.get("institution_domain", "")).strip())
+            if school:
+                curricula = school["curricula"] or curricula
+            if school and not verify_join_key(data.get("join_key", ""), school):
+                return self.send_json({"error": "That school requires a valid join key."}, HTTPStatus.FORBIDDEN)
+            verify_token = secrets.token_urlsafe(32)
+            pending = {
+                "name": data["name"].strip(),
+                "email": email,
+            }
+            conn.execute(
+                """
+                INSERT INTO pending_registrations (
+                  email, token, name, institution, institution_country, institution_domain,
+                  curricula, role, salt, password_hash, expires_at, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(email) DO UPDATE SET
+                  token = excluded.token,
+                  name = excluded.name,
+                  institution = excluded.institution,
+                  institution_country = excluded.institution_country,
+                  institution_domain = excluded.institution_domain,
+                  curricula = excluded.curricula,
+                  role = excluded.role,
+                  salt = excluded.salt,
+                  password_hash = excluded.password_hash,
+                  expires_at = excluded.expires_at,
+                  created_at = excluded.created_at
+                """,
+                (
+                    email,
+                    verify_token,
+                    data["name"].strip(),
+                    data["institution"].strip(),
+                    str(data.get("institution_country", "")).strip(),
+                    str(data.get("institution_domain", "")).strip(),
+                    curricula,
+                    role,
+                    salt,
+                    digest,
+                    now() + 7 * 24 * 60 * 60,
+                    now(),
+                ),
+            )
+        if not send_verification_email(pending, verify_token):
             with db() as conn:
-                school = school_settings_for(conn, data["institution"].strip(), str(data.get("institution_domain", "")).strip())
-                if school:
-                    curricula = school["curricula"] or curricula
-                if school and not verify_join_key(data.get("join_key", ""), school):
-                    return self.send_json({"error": "That school requires a valid join key."}, HTTPStatus.FORBIDDEN)
-                cur = conn.execute(
-                    """
-                    INSERT INTO users (
-                      name, email, institution, institution_country, institution_domain,
-                      curricula, role, email_verified, is_school_admin, salt, password_hash, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        data["name"].strip(),
-                        email,
-                        data["institution"].strip(),
-                        str(data.get("institution_country", "")).strip(),
-                        str(data.get("institution_domain", "")).strip(),
-                        curricula,
-                        role,
-                        0,
-                        0,
-                        salt,
-                        digest,
-                        now(),
-                    ),
-                )
-                user_id = cur.lastrowid
-                verify_token = create_auth_token(conn, user_id, "verify_email", 7 * 24 * 60 * 60)
-                session_token = ""
-                row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-        except sqlite3.IntegrityError:
-            with db() as conn:
-                row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-                if row and not safe_row_value(row, "email_verified", 1):
-                    verify_token = create_auth_token(conn, row["id"], "verify_email", 7 * 24 * 60 * 60)
-                else:
-                    verify_token = ""
-            if verify_token:
-                if not send_verification_email(row, verify_token):
-                    with db() as conn:
-                        conn.execute("DELETE FROM auth_tokens WHERE token = ? AND purpose = 'verify_email'", (verify_token,))
-                    return self.send_json({"error": verification_delivery_error()}, HTTPStatus.BAD_GATEWAY)
-                return self.send_json({
-                    "requires_verification": True,
-                    "verification_email": email,
-                    "message": "That profile already exists but still needs email verification. We sent a new code.",
-                })
-            return self.send_json({"error": "That email is already registered. Sign in instead."}, HTTPStatus.CONFLICT)
-        cookie = session_cookie(session_token) if session_token else None
-        payload = {}
-        if verify_token:
-            if not send_verification_email(row, verify_token):
-                with db() as conn:
-                    conn.execute("DELETE FROM auth_tokens WHERE user_id = ? AND purpose = 'verify_email'", (user_id,))
-                    conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-                return self.send_json({"error": verification_delivery_error()}, HTTPStatus.BAD_GATEWAY)
-            payload["requires_verification"] = True
-            payload["verification_email"] = email
-        else:
-            payload["user"] = public_user(row)
-        return self.send_json(payload, cookie=cookie)
+                conn.execute("DELETE FROM pending_registrations WHERE token = ?", (verify_token,))
+            return self.send_json({"error": verification_delivery_error()}, HTTPStatus.BAD_GATEWAY)
+        return self.send_json({
+            "requires_verification": True,
+            "verification_email": email,
+            "message": "We sent a verification code. Your profile will be created after verification.",
+        })
 
     def login(self):
         data = self.read_json()
@@ -1598,19 +1609,58 @@ class Handler(SimpleHTTPRequestHandler):
         if rate_limited(f"verify-resend:{self.client_address[0]}:{email}", 3, 300):
             return self.send_json({"error": "Too many verification email requests. Try again in a few minutes."}, HTTPStatus.TOO_MANY_REQUESTS)
         with db() as conn:
-            row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-            if not row or safe_row_value(row, "email_verified", 1):
-                return self.send_json({
-                    "ok": True,
-                    "sent": False,
-                    "message": "If that unverified account exists, a new verification code has been emailed.",
-                })
-            token = create_auth_token(conn, row["id"], "verify_email", 7 * 24 * 60 * 60)
+            pending = conn.execute("SELECT * FROM pending_registrations WHERE email = ?", (email,)).fetchone()
+            if pending:
+                token = secrets.token_urlsafe(32)
+                conn.execute(
+                    "UPDATE pending_registrations SET token = ?, expires_at = ?, created_at = ? WHERE id = ?",
+                    (token, now() + 7 * 24 * 60 * 60, now(), pending["id"]),
+                )
+                row = conn.execute("SELECT * FROM pending_registrations WHERE id = ?", (pending["id"],)).fetchone()
+            else:
+                row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+                if not row or safe_row_value(row, "email_verified", 1):
+                    return self.send_json({
+                        "ok": True,
+                        "sent": False,
+                        "message": "If that pending registration exists, a new verification code has been emailed.",
+                    })
+                token = create_auth_token(conn, row["id"], "verify_email", 7 * 24 * 60 * 60)
         if not send_verification_email(row, token):
             with db() as conn:
+                conn.execute("DELETE FROM pending_registrations WHERE token = ?", (token,))
                 conn.execute("DELETE FROM auth_tokens WHERE token = ? AND purpose = 'verify_email'", (token,))
             return self.send_json({"error": verification_delivery_error()}, HTTPStatus.BAD_GATEWAY)
         return self.send_json({"ok": True, "sent": True, "email": email})
+
+    def verify_pending_registration(self, conn, pending):
+        cur = conn.execute(
+            """
+            INSERT INTO users (
+              name, email, institution, institution_country, institution_domain,
+              curricula, role, email_verified, is_school_admin, is_site_admin,
+              salt, password_hash, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                pending["name"],
+                pending["email"],
+                pending["institution"],
+                pending["institution_country"],
+                pending["institution_domain"],
+                pending["curricula"],
+                pending["role"],
+                1,
+                0,
+                0,
+                pending["salt"],
+                pending["password_hash"],
+                now(),
+            ),
+        )
+        user_id = cur.lastrowid
+        conn.execute("DELETE FROM pending_registrations WHERE id = ?", (pending["id"],))
+        return conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
 
     def verify_email(self):
         data = self.read_json()
@@ -1618,6 +1668,23 @@ class Handler(SimpleHTTPRequestHandler):
         if not token:
             return self.send_json({"error": "Verification token is required."}, HTTPStatus.BAD_REQUEST)
         with db() as conn:
+            pending = conn.execute(
+                "SELECT * FROM pending_registrations WHERE token = ?",
+                (token,),
+            ).fetchone()
+            if pending:
+                if pending["expires_at"] < now():
+                    conn.execute("DELETE FROM pending_registrations WHERE id = ?", (pending["id"],))
+                    return self.send_json({"error": "Verification link is invalid or expired."}, HTTPStatus.BAD_REQUEST)
+                existing = conn.execute("SELECT id FROM users WHERE email = ?", (pending["email"],)).fetchone()
+                if existing:
+                    conn.execute("DELETE FROM pending_registrations WHERE id = ?", (pending["id"],))
+                    return self.send_json({"error": "That email is already registered. Sign in instead."}, HTTPStatus.CONFLICT)
+                user_row = self.verify_pending_registration(conn, pending)
+                session_token = secrets.token_urlsafe(32)
+                conn.execute("INSERT INTO sessions (token, user_id, created_at) VALUES (?, ?, ?)", (session_token, user_row["id"], now()))
+                cookie = session_cookie(session_token)
+                return self.send_json({"ok": True, "user": public_user(user_row)}, cookie=cookie)
             row = conn.execute(
                 """
                 SELECT * FROM auth_tokens
@@ -1626,7 +1693,9 @@ class Handler(SimpleHTTPRequestHandler):
                 (token,),
             ).fetchone()
             if not row or row["expires_at"] < now():
-                return self.send_json({"error": "Verification link is invalid or expired."}, HTTPStatus.BAD_REQUEST)
+                return self.send_json({
+                    "error": "Verification link is invalid or expired."
+                }, HTTPStatus.BAD_REQUEST)
             conn.execute("UPDATE users SET email_verified = 1 WHERE id = ?", (row["user_id"],))
             conn.execute("UPDATE auth_tokens SET used_at = ? WHERE id = ?", (now(), row["id"]))
             user_row = conn.execute("SELECT * FROM users WHERE id = ?", (row["user_id"],)).fetchone()

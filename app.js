@@ -890,7 +890,7 @@ function installAuthForms() {
           }
           replayPop(verificationStep);
         }
-        setMessage("[data-register-message]", `Profile created. We sent a verification code to ${result.verification_email || "your email"}.`, "ok");
+        setMessage("[data-register-message]", `Verification sent to ${result.verification_email || "your email"}. Your profile will be created after you enter the code.`, "ok");
         setMessage("[data-verify-message]", "Enter the verification code from your email.", "ok");
         return;
       }

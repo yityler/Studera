@@ -74,12 +74,13 @@ class StuderaPrivacyTests(unittest.TestCase):
             "role": "student",
         })
         self.assertEqual(status, 200, data)
+        self.assertTrue(data["requires_verification"])
         with server.db() as conn:
-            conn.execute("UPDATE users SET email_verified = 1 WHERE email = ?", (email,))
-        status, data = client.request("POST", "/api/auth/login", {
-            "email": email,
-            "password": "strongpass123",
-        })
+            token = conn.execute(
+                "SELECT token FROM pending_registrations WHERE email = ?",
+                (email,),
+            ).fetchone()["token"]
+        status, data = client.request("POST", "/api/auth/verify", {"token": token})
         self.assertEqual(status, 200, data)
         return client
 
@@ -136,17 +137,16 @@ class StuderaPrivacyTests(unittest.TestCase):
             "email": "unverified@example-m.edu",
             "password": "strongpass123",
         })
-        self.assertEqual(status, 200, data)
-        self.assertTrue(data["requires_verification"])
-        self.assertNotIn("user", data)
+        self.assertEqual(status, 401, data)
 
         status, data = client.request("GET", "/api/session")
         self.assertEqual(status, 200, data)
         self.assertIsNone(data["user"])
 
         with server.db() as conn:
+            self.assertIsNone(conn.execute("SELECT id FROM users WHERE email = ?", ("unverified@example-m.edu",)).fetchone())
             token = conn.execute(
-                "SELECT token FROM auth_tokens WHERE user_id = (SELECT id FROM users WHERE email = ?) AND purpose = 'verify_email' AND used_at = 0 ORDER BY id DESC",
+                "SELECT token FROM pending_registrations WHERE email = ?",
                 ("unverified@example-m.edu",),
             ).fetchone()["token"]
         status, data = client.request("POST", "/api/auth/verify", {"token": token})
@@ -172,13 +172,24 @@ class StuderaPrivacyTests(unittest.TestCase):
         self.assertEqual(status, 200, data)
         self.assertTrue(data["requires_verification"])
         with server.db() as conn:
+            self.assertIsNone(conn.execute(
+                "SELECT id FROM users WHERE email = ?",
+                ("yi46635@sas.edu.sg",),
+            ).fetchone())
+            token = conn.execute(
+                "SELECT token FROM pending_registrations WHERE email = ?",
+                ("yi46635@sas.edu.sg",),
+            ).fetchone()["token"]
+        status, data = client.request("POST", "/api/auth/verify", {"token": token})
+        self.assertEqual(status, 200, data)
+        with server.db() as conn:
             row = conn.execute(
                 "SELECT is_school_admin, is_site_admin, email_verified FROM users WHERE email = ?",
                 ("yi46635@sas.edu.sg",),
             ).fetchone()
         self.assertEqual(row["is_school_admin"], 0)
         self.assertEqual(row["is_site_admin"], 0)
-        self.assertEqual(row["email_verified"], 0)
+        self.assertEqual(row["email_verified"], 1)
 
     def test_users_cannot_cross_school_read_threads(self):
         school_a = self.register_verified("alice@example-a.edu", "Example A School", "example-a.edu")
