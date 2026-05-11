@@ -82,6 +82,43 @@ const SECTIONS_BY_CURRICULUM = {
 };
 
 const customSectionsByCurriculum = {};
+const THEME_KEY = "studera-theme";
+
+function storedTheme() {
+  try {
+    return localStorage.getItem(THEME_KEY) || "light";
+  } catch {
+    return "light";
+  }
+}
+
+function resolveTheme(choice) {
+  if (choice === "system") {
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  return choice === "dark" ? "dark" : "light";
+}
+
+function applyTheme(choice = storedTheme()) {
+  const normalized = ["light", "dark", "system"].includes(choice) ? choice : "light";
+  const resolved = resolveTheme(normalized);
+  document.documentElement.dataset.themeChoice = normalized;
+  document.documentElement.dataset.theme = resolved;
+  try {
+    localStorage.setItem(THEME_KEY, normalized);
+  } catch {
+    // Local storage can be blocked in some browser privacy modes.
+  }
+}
+
+function initTheme() {
+  applyTheme();
+  window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+    if (storedTheme() === "system") applyTheme("system");
+  });
+}
+
+initTheme();
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -125,6 +162,45 @@ function escapeHtml(value) {
     '"': "&quot;",
     "'": "&#039;",
   }[char]));
+}
+
+function renderLatex(source, displayMode = false) {
+  const latex = String(source || "");
+  if (!window.katex) return escapeHtml(displayMode ? `$$${latex}$$` : `$${latex}$`);
+  try {
+    return window.katex.renderToString(latex, {
+      displayMode,
+      throwOnError: false,
+      strict: "ignore",
+      trust: false,
+    });
+  } catch {
+    return escapeHtml(displayMode ? `$$${latex}$$` : `$${latex}$`);
+  }
+}
+
+function renderRichText(value) {
+  const text = String(value || "");
+  if (!text) return "";
+  const pattern = /(\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$\$[\s\S]+?\$\$|\$[^\n$]+\$)/g;
+  let cursor = 0;
+  let html = "";
+  text.replace(pattern, (match, _unused, index) => {
+    html += escapeHtml(text.slice(cursor, index)).replace(/\n/g, "<br>");
+    if (match.startsWith("$$")) {
+      html += renderLatex(match.slice(2, -2), true);
+    } else if (match.startsWith("\\[")) {
+      html += renderLatex(match.slice(2, -2), true);
+    } else if (match.startsWith("\\(")) {
+      html += renderLatex(match.slice(2, -2), false);
+    } else {
+      html += renderLatex(match.slice(1, -1), false);
+    }
+    cursor = index + match.length;
+    return match;
+  });
+  html += escapeHtml(text.slice(cursor)).replace(/\n/g, "<br>");
+  return `<div class="rich-text">${html}</div>`;
 }
 
 function attachmentsFor(item) {
@@ -978,6 +1054,7 @@ function renderSettings() {
   $("#settings-bio").value = state.user.bio || "";
   setStaticSelectValue($("[data-settings-role]"), state.user.role || "student");
   setStaticSelectValue($("[data-settings-visibility]"), state.user.profile_visibility || "school");
+  setStaticSelectValue($("[data-theme-select]"), storedTheme());
   $("[name='show_school']", form).checked = Boolean(state.user.show_school);
   $("[name='show_email']", form).checked = Boolean(state.user.show_email);
   $("[name='email_replies']", form).checked = Boolean(state.user.email_replies);
@@ -1009,6 +1086,11 @@ function installSettings() {
 
   form.addEventListener("input", (event) => showSectionSave(event.target));
   form.addEventListener("change", (event) => showSectionSave(event.target));
+
+  $("#settings-theme")?.addEventListener("change", (event) => {
+    applyTheme(event.target.value);
+    toast("Theme updated.");
+  });
 
   $all("[data-save-settings]").forEach((button) => button.addEventListener("click", async (event) => {
     event.preventDefault();
@@ -1626,11 +1708,14 @@ function installCustomSelects() {
     }
   });
 
-  document.addEventListener("click", (event) => {
-    if (!event.target.closest(".custom-select")) {
-      $all(".custom-select.open").forEach((node) => node.classList.remove("open"));
-    }
-  });
+  if (installCustomSelects.documentBound !== "true") {
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".custom-select")) {
+        $all(".custom-select.open").forEach((node) => node.classList.remove("open"));
+      }
+    });
+    installCustomSelects.documentBound = "true";
+  }
 }
 
 function setStaticSelectValue(wrapper, value) {
@@ -1656,6 +1741,42 @@ function setCustomSections(customCurricula) {
 
 function sectionsForCurriculum(curriculum) {
   return customSectionsByCurriculum[curriculum] || SECTIONS_BY_CURRICULUM[curriculum] || [];
+}
+
+function uniqueSectionsForAllowedCurricula() {
+  const curricula = state.filter ? [state.filter] : allowedCurricula();
+  const seen = new Set();
+  curricula.forEach((curriculum) => {
+    sectionsForCurriculum(curriculum).forEach((section) => {
+      if (section) seen.add(section);
+    });
+  });
+  return Array.from(seen);
+}
+
+function updateClassFilterOptions() {
+  const wrapper = $("[data-class-filter]");
+  const menu = $("[data-class-filter-menu]");
+  if (!wrapper || !menu) return;
+  const input = $("#feed-section");
+  const current = input?.value || "";
+  const sections = uniqueSectionsForAllowedCurricula();
+  menu.innerHTML = [
+    `<button class="custom-option active" type="button" data-value="">All Classes</button>`,
+    ...sections.map((section) => `<button class="custom-option" type="button" data-value="${escapeHtml(section)}">${escapeHtml(section)}</button>`),
+  ].join("");
+  installCustomSelects();
+  setStaticSelectValue(wrapper, sections.includes(current) ? current : "");
+}
+
+function updateCurriculumStatus(allowedList = allowedCurricula()) {
+  const target = $("[data-curriculum-status]");
+  if (!target) return;
+  const curricula = allowedList.length ? allowedList : ALL_CURRICULA;
+  target.innerHTML = `
+    <span>Curriculum added</span>
+    <strong>${escapeHtml(curricula.join(", "))}</strong>
+  `;
 }
 
 function updateSectionOptions(curriculum) {
@@ -1708,6 +1829,8 @@ function setCurriculumOptions(allowed) {
   const allowedList = allowed && allowed.length ? allowed : ALL_CURRICULA;
   const allowSet = new Set(allowedList);
   renderCurriculumFilters(allowedList);
+  updateCurriculumStatus(allowedList);
+  updateClassFilterOptions();
 
   $all("[data-curriculum]").forEach((button) => {
     const value = button.dataset.curriculum;
@@ -1721,6 +1844,7 @@ function setCurriculumOptions(allowed) {
     if (document.body.dataset.page === "feed") loadThreads();
   }
   syncComposerCurriculum();
+  updateClassFilterOptions();
 }
 
 function installInstitutionAutocomplete() {
@@ -1871,7 +1995,7 @@ function threadCard(thread) {
         <span class="meta">${escapeHtml(thread.created_at)}</span>
       </div>
       <a href="thread.html?id=${thread.id}"><h2>${escapeHtml(thread.title)}</h2></a>
-      <p>${escapeHtml(thread.preview)}</p>
+      ${renderRichText(thread.preview)}
       ${renderAttachments(thread)}
       <div class="action-row" style="margin-top:16px;">
         <button class="text-action ${thread.supported ? "active" : ""}" data-support-thread="${thread.id}" type="button">Support ${thread.supports}</button>
@@ -1893,6 +2017,8 @@ async function loadThreads() {
   if (q) params.set("q", q);
   const status = $("#feed-status")?.value;
   if (status) params.set("status", status);
+  const section = $("#feed-section")?.value;
+  if (section) params.set("section", section);
   if ($("[name='teacher_replied']")?.checked) params.set("teacher_replied", "1");
   if ($("[name='has_uploads']")?.checked) params.set("has_uploads", "1");
   const data = await api(`/api/threads?${params.toString()}`);
@@ -1903,6 +2029,7 @@ async function loadThreads() {
 function installFeed() {
   if (document.body.dataset.page !== "feed") return;
 
+  setCurriculumOptions(allowedCurricula());
   syncComposerCurriculum();
 
   $("[data-new-thread]")?.addEventListener("click", () => {
@@ -1923,6 +2050,7 @@ function installFeed() {
     state.filter = button.dataset.curriculum;
     state.bookmarkedOnly = false;
     $all("[data-curriculum]").forEach((item) => item.classList.toggle("active", item === button));
+    updateClassFilterOptions();
     updateNavState();
     syncComposerCurriculum();
     loadThreads();
@@ -1966,6 +2094,10 @@ function installFeed() {
     const del = event.target.closest("[data-delete-thread]");
     const card = event.target.closest("[data-thread-card]");
     if (!support && !bookmark && !del && !card) return;
+    if (support || bookmark || del) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     if (card && !support && !bookmark && !del && !event.target.closest("a, button, input, textarea, select, label")) {
       location.href = `thread.html?id=${card.dataset.threadCard}`;
       return;
@@ -2141,7 +2273,7 @@ function renderThreadDetail(thread, replies) {
           </div>
         </header>
         <div class="thread-body">
-          ${escapeHtml(thread.body).split("\n").filter(Boolean).map((p) => `<p>${p}</p>`).join("")}
+          ${renderRichText(thread.body)}
         </div>
         ${renderAttachments(thread)}
         <div class="action-row thread-actions">
@@ -2191,7 +2323,7 @@ function replyCard(reply, thread = {}) {
           ${roleBadge(reply.author_role)}
           <span class="meta">${escapeHtml(reply.created_at)}</span>
         </div>
-        <p>${escapeHtml(reply.body)}</p>
+        ${renderRichText(reply.body)}
         ${renderAttachments(reply)}
         <div class="response-actions">
           <a href="#reply-body">Reply</a>
@@ -2276,6 +2408,8 @@ function installThread() {
     const statusButton = event.target.closest("[data-thread-status]");
     const markAnswer = event.target.closest("[data-mark-answer]");
     if (!support && !bookmark && !del && !threadDel && !threadEdit && !replyEdit && !replySupport && !share && !report && !statusButton && !markAnswer) return;
+    event.preventDefault();
+    event.stopPropagation();
     try {
       if (support) await api(`/api/threads/${support.dataset.detailSupport}/support`, { method: "POST", body: "{}" });
       if (bookmark) await api(`/api/threads/${bookmark.dataset.detailBookmark}/bookmark`, { method: "POST", body: "{}" });
@@ -2380,7 +2514,7 @@ async function renderProfile() {
           </div>
         </div>
       </section>
-      ${profile.bio ? `<section class="settings-panel"><h2>About</h2><p>${escapeHtml(profile.bio)}</p></section>` : ""}
+      ${profile.bio ? `<section class="settings-panel"><h2>About</h2>${renderRichText(profile.bio)}</section>` : ""}
       <section class="settings-panel">
         <div><p class="eyebrow">Authored Threads</p><h2>Recent discussions</h2></div>
         <div class="thread-list">${data.threads.length ? data.threads.map(threadCard).join("") : `<p class="upload-empty">No public threads yet.</p>`}</div>

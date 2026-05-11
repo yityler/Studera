@@ -4,10 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Studera | Settings</title>
-    <link rel="icon" type="image/svg+xml" href="assets/studera-favicon.svg?v=20260508-help-uploads-v91" />
-    <link rel="stylesheet" href="styles.css?v=20260508-help-uploads-v91" />
+    <link rel="icon" type="image/svg+xml" href="assets/studera-favicon.svg?v=20260511-feedback-v92" />
+    <link rel="stylesheet" href="styles.css?v=20260511-feedback-v92" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
   </head>
-  <body data-page="settings" data-build="20260508-help-uploads-v91">
+  <body data-page="settings" data-build="20260511-feedback-v92">
     <nav class="site-nav">
       <div class="nav-inner">
         <a class="brand" href="index.html">Studera</a>
@@ -30,6 +31,7 @@
         <p class="eyebrow">Account</p>
         <h1>Settings</h1>
         <nav>
+          <a href="#appearance">Appearance</a>
           <a href="#profile">Profile</a>
           <a href="#security">Security</a>
           <a href="#privacy">Privacy</a>
@@ -48,6 +50,28 @@
         </section>
 
         <section class="settings-form hidden" data-settings-form>
+          <section class="settings-panel" id="appearance">
+            <div>
+              <p class="eyebrow">Appearance</p>
+              <h2>Theme</h2>
+              <p>Choose a light, dark, or system-matched interface for long study sessions.</p>
+            </div>
+            <div class="form-grid">
+              <div class="field wide">
+                <label for="settings-theme">Theme Selector</label>
+                <div class="custom-select" data-static-select data-theme-select>
+                  <input type="hidden" id="settings-theme" name="theme" value="light" />
+                  <button class="custom-select-button" type="button">Light</button>
+                  <div class="custom-select-menu">
+                    <button class="custom-option active" type="button" data-value="light">Light</button>
+                    <button class="custom-option" type="button" data-value="dark">Dark</button>
+                    <button class="custom-option" type="button" data-value="system">System</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section class="settings-panel" id="profile" data-settings-section>
             <div>
               <p class="eyebrow">Profile</p>
@@ -239,9 +263,10 @@
       </div>
     </footer>
     <div class="toast" data-toast></div>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="react-shell.js?v=20260508-help-uploads-v91"></script>
-    <script src="app.js?v=20260508-help-uploads-v91"></script>
+    <script src="react-shell.js?v=20260511-feedback-v92"></script>
+    <script src="app.js?v=20260511-feedback-v92"></script>
   </body>
 </html>

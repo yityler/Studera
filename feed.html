@@ -4,10 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Studera | Feed</title>
-    <link rel="icon" type="image/svg+xml" href="assets/studera-favicon.svg?v=20260508-help-uploads-v91" />
-    <link rel="stylesheet" href="styles.css?v=20260508-help-uploads-v91" />
+    <link rel="icon" type="image/svg+xml" href="assets/studera-favicon.svg?v=20260511-feedback-v92" />
+    <link rel="stylesheet" href="styles.css?v=20260511-feedback-v92" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
   </head>
-  <body data-page="feed" data-build="20260508-help-uploads-v91">
+  <body data-page="feed" data-build="20260511-feedback-v92">
     <script>
       if (new URLSearchParams(location.search).get("bookmarked") === "1") {
         document.body.classList.add("is-bookmarked");
@@ -34,6 +35,10 @@
       <aside class="sidebar">
         <h1>Academic Filters</h1>
         <p class="filter-copy">Select your curriculum</p>
+        <div class="curriculum-status" data-curriculum-status>
+          <span>Curriculum added</span>
+          <strong>Loading...</strong>
+        </div>
         <div class="filter-list" data-filters>
           <button class="filter-item active" data-curriculum="" type="button">All Threads</button>
           <button class="filter-item" data-curriculum="AP Curriculum" type="button">AP Curriculum</button>
@@ -66,6 +71,13 @@
               <button class="custom-option" type="button" data-value="answered">Answered</button>
               <button class="custom-option" type="button" data-value="locked">Locked</button>
               <button class="custom-option" type="button" data-value="archived">Archived</button>
+            </div>
+          </div>
+          <div class="custom-select compact-select" data-static-select data-class-filter>
+            <input type="hidden" id="feed-section" name="section" value="" />
+            <button class="custom-select-button" type="button" aria-label="Class filter">All Classes</button>
+            <div class="custom-select-menu" data-class-filter-menu>
+              <button class="custom-option active" type="button" data-value="">All Classes</button>
             </div>
           </div>
           <label class="filter-toggle"><input name="teacher_replied" type="checkbox" />Teacher replied</label>
@@ -134,9 +146,10 @@
       </div>
     </footer>
     <div class="toast" data-toast></div>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="react-shell.js?v=20260508-help-uploads-v91"></script>
-    <script src="app.js?v=20260508-help-uploads-v91"></script>
+    <script src="react-shell.js?v=20260511-feedback-v92"></script>
+    <script src="app.js?v=20260511-feedback-v92"></script>
   </body>
 </html>

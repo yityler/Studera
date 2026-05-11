@@ -2697,6 +2697,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json({"error": "Site admins cannot access school forums."}, HTTPStatus.FORBIDDEN)
         params = parse_qs(parsed.query)
         curriculum = params.get("curriculum", [""])[0]
+        section = params.get("section", [""])[0]
         q = params.get("q", [""])[0]
         status = params.get("status", [""])[0]
         teacher_replied = params.get("teacher_replied", [""])[0] == "1"
@@ -2707,6 +2708,9 @@ class Handler(SimpleHTTPRequestHandler):
         if curriculum:
             where.append("threads.curriculum = ?")
             values.append(curriculum)
+        if section:
+            where.append("threads.section = ?")
+            values.append(section)
         if q:
             where.append("""
               (threads.title LIKE ? OR threads.body LIKE ? OR threads.section LIKE ?

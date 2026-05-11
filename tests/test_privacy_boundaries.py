@@ -208,6 +208,21 @@ class StuderaPrivacyTests(unittest.TestCase):
         status, data = school_b.request("GET", f"/api/threads/{thread_id}")
         self.assertEqual(status, 404)
 
+    def test_threads_can_be_filtered_by_class_section(self):
+        client = self.register_verified("section-filter@example-q.edu", "Example Q School", "example-q.edu")
+        for title, section in (("Biology question", "AP Biology"), ("Calculus question", "AP Calculus AB")):
+            status, data = client.request("POST", "/api/threads", {
+                "title": title,
+                "body": f"Question for {section}",
+                "curriculum": "AP Curriculum",
+                "section": section,
+            })
+            self.assertEqual(status, 200, data)
+
+        status, data = client.request("GET", "/api/threads?section=AP%20Biology")
+        self.assertEqual(status, 200, data)
+        self.assertEqual([thread["title"] for thread in data["threads"]], ["Biology question"])
+
     def test_thread_uploads_are_served_from_configured_upload_directory(self):
         client = self.register_verified("upload-author@example-v.edu", "Example V School", "example-v.edu")
         encoded = base64.b64encode(b"Studera upload fixture").decode()
