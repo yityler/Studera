@@ -1790,6 +1790,39 @@ html[data-theme="dark"] .reply-card p {
   color: #172333;
 }
 
+.reply-context,
+.reply-target {
+  display: block;
+  border-left: 3px solid var(--gold);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--panel) 78%, transparent);
+  margin-top: 14px;
+  padding: 10px 12px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.reply-context span,
+.reply-target span {
+  color: var(--ink);
+  font-family: var(--label);
+  font-size: 0.68rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.reply-context p,
+.reply-target p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.reply-context:hover {
+  border-left-color: var(--navy);
+}
+
 .reply-top {
   display: flex;
   align-items: center;
@@ -1826,6 +1859,18 @@ html[data-theme="dark"] .reply-card p {
   border-radius: 6px;
   background: white;
   padding: 20px;
+}
+
+.reply-target {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 0;
+}
+
+.reply-target.hidden {
+  display: none;
 }
 
 .reply-composer textarea {

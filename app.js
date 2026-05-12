@@ -164,6 +164,11 @@ function escapeHtml(value) {
   }[char]));
 }
 
+function compactText(value, max = 180) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
 function renderLatex(source, displayMode = false) {
   const latex = String(source || "");
   if (!window.katex) return escapeHtml(displayMode ? `$$${latex}$$` : `$${latex}$`);
@@ -2296,8 +2301,9 @@ function replyCard(reply, thread = {}) {
   const canDelete = state.user && (state.user.id === reply.author_id || state.user.is_school_admin);
   const featured = ["teacher", "staff"].includes(reply.author_role) ? " featured" : "";
   const canMarkAnswer = Boolean(state.user && state.user.id === thread.author_id && !["locked", "archived"].includes(thread.status));
+  const replyPreview = compactText(reply.body, 150);
   return `
-    <article class="response-row">
+    <article class="response-row" id="reply-${reply.id}">
       <div class="vote">
         <button class="${reply.supported ? "active" : ""}" data-support-reply="${reply.id}" type="button" aria-label="Support reply"></button>
         <strong>${reply.supports}</strong>
@@ -2310,10 +2316,16 @@ function replyCard(reply, thread = {}) {
           ${roleBadge(reply.author_role)}
           <span class="meta">${escapeHtml(reply.created_at)}</span>
         </div>
+        ${reply.reply_to ? `
+          <a class="reply-context" href="#reply-${reply.reply_to.id}">
+            <span>Replying to ${escapeHtml(reply.reply_to.author_name)}</span>
+            <p>${escapeHtml(compactText(reply.reply_to.body, 160))}</p>
+          </a>
+        ` : ""}
         ${renderRichText(reply.body)}
         ${renderAttachments(reply)}
         <div class="response-actions">
-          <a href="#reply-body">Reply</a>
+          <button class="text-action" data-reply-to="${reply.id}" data-reply-author="${escapeHtml(reply.author_name)}" data-reply-preview="${escapeHtml(replyPreview)}" type="button">Reply</button>
           <button class="text-action" data-share-thread type="button">Share</button>
           ${state.user ? `<button class="text-action" data-report-content="reply" data-target-id="${reply.id}" type="button">Report</button>` : ""}
           ${canMarkAnswer ? `<button class="text-action" data-mark-answer="${reply.id}" type="button">Mark Answer</button>` : ""}
@@ -2328,6 +2340,13 @@ function replyCard(reply, thread = {}) {
 function replyForm(threadId) {
   return `
     <form class="reply-composer" data-reply-form>
+      <div class="reply-target hidden" data-reply-target>
+        <div>
+          <span>Replying to <strong data-reply-target-author></strong></span>
+          <p data-reply-target-preview></p>
+        </div>
+        <button class="text-action" data-clear-reply-target type="button">Clear</button>
+      </div>
       <div class="field">
         <label for="reply-body">Draft Your Contribution</label>
         <textarea id="reply-body" name="body" placeholder="Support your argument with citations where possible..." required></textarea>
@@ -2343,6 +2362,7 @@ function replyForm(threadId) {
       <button class="button" type="submit">Submit Response</button>
       <p class="form-message" data-reply-message></p>
       <input type="hidden" name="thread_id" value="${threadId}" />
+      <input type="hidden" name="parent_reply_id" value="" data-parent-reply-id />
     </form>
   `;
 }
@@ -2394,10 +2414,31 @@ function installThread() {
     const report = event.target.closest("[data-report-content]");
     const statusButton = event.target.closest("[data-thread-status]");
     const markAnswer = event.target.closest("[data-mark-answer]");
-    if (!support && !bookmark && !del && !threadDel && !threadEdit && !replyEdit && !replySupport && !share && !report && !statusButton && !markAnswer) return;
+    const replyTo = event.target.closest("[data-reply-to]");
+    const clearReplyTarget = event.target.closest("[data-clear-reply-target]");
+    if (!support && !bookmark && !del && !threadDel && !threadEdit && !replyEdit && !replySupport && !share && !report && !statusButton && !markAnswer && !replyTo && !clearReplyTarget) return;
     event.preventDefault();
     event.stopPropagation();
     try {
+      if (replyTo) {
+        const form = $("[data-reply-form]");
+        if (!form) return;
+        const target = $("[data-reply-target]", form);
+        $("[data-parent-reply-id]", form).value = replyTo.dataset.replyTo;
+        $("[data-reply-target-author]", form).textContent = replyTo.dataset.replyAuthor || "this response";
+        $("[data-reply-target-preview]", form).textContent = replyTo.dataset.replyPreview || "";
+        target?.classList.remove("hidden");
+        form?.scrollIntoView({ behavior: "smooth", block: "center" });
+        window.requestAnimationFrame(() => $("#reply-body")?.focus());
+        return;
+      }
+      if (clearReplyTarget) {
+        const form = clearReplyTarget.closest("[data-reply-form]");
+        if (!form) return;
+        $("[data-parent-reply-id]", form).value = "";
+        $("[data-reply-target]", form)?.classList.add("hidden");
+        return;
+      }
       if (support) await api(`/api/threads/${support.dataset.detailSupport}/support`, { method: "POST", body: "{}" });
       if (bookmark) await api(`/api/threads/${bookmark.dataset.detailBookmark}/bookmark`, { method: "POST", body: "{}" });
       if (del) await api(`/api/replies/${del.dataset.deleteReply}`, { method: "DELETE" });

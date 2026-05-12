@@ -273,6 +273,7 @@ def init_db():
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               thread_id INTEGER NOT NULL,
               user_id INTEGER NOT NULL,
+              parent_reply_id INTEGER DEFAULT 0,
               body TEXT NOT NULL,
               image_path TEXT DEFAULT '',
               image_name TEXT DEFAULT '',
@@ -452,6 +453,10 @@ def init_db():
                     conn.execute(f"ALTER TABLE {table} ADD COLUMN {column}")
                 except sqlite3.OperationalError:
                     pass
+        try:
+            conn.execute("ALTER TABLE replies ADD COLUMN parent_reply_id INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
         for column in (
             "status TEXT DEFAULT 'open'",
             "answered_reply_id INTEGER DEFAULT 0",
@@ -3023,9 +3028,15 @@ class Handler(SimpleHTTPRequestHandler):
             replies = conn.execute(
                 """
                 SELECT replies.*, users.name author_name, users.role author_role,
+                  parent_replies.body reply_to_body,
+                  parent_users.name reply_to_author_name,
                   (SELECT COUNT(*) FROM reply_supports WHERE reply_supports.reply_id = replies.id) supports,
                   EXISTS(SELECT 1 FROM reply_supports WHERE reply_supports.reply_id = replies.id AND reply_supports.user_id = ?) supported
-                FROM replies JOIN users ON users.id = replies.user_id
+                FROM replies
+                JOIN users ON users.id = replies.user_id
+                LEFT JOIN replies parent_replies ON parent_replies.id = replies.parent_reply_id
+                  AND parent_replies.thread_id = replies.thread_id
+                LEFT JOIN users parent_users ON parent_users.id = parent_replies.user_id
                 WHERE replies.thread_id = ?
                 ORDER BY replies.created_at ASC, replies.id ASC
                 """,
@@ -3101,6 +3112,10 @@ class Handler(SimpleHTTPRequestHandler):
         if not body:
             return self.send_json({"error": "Reply body is required."}, HTTPStatus.BAD_REQUEST)
         try:
+            parent_reply_id = int(data.get("parent_reply_id") or 0)
+        except (TypeError, ValueError):
+            parent_reply_id = 0
+        try:
             uploads = save_uploads(data)
         except ValueError as error:
             return self.send_json({"error": str(error)}, HTTPStatus.BAD_REQUEST)
@@ -3129,13 +3144,25 @@ class Handler(SimpleHTTPRequestHandler):
                 for upload in uploads:
                     delete_upload(upload["path"])
                 return self.send_json({"error": "You can only reply within your own school."}, HTTPStatus.FORBIDDEN)
+            if parent_reply_id:
+                parent_reply = conn.execute(
+                    "SELECT id FROM replies WHERE id = ? AND thread_id = ?",
+                    (parent_reply_id, thread_id),
+                ).fetchone()
+                if not parent_reply:
+                    for upload in uploads:
+                        delete_upload(upload["path"])
+                    return self.send_json({"error": "Choose a reply from this thread."}, HTTPStatus.BAD_REQUEST)
             cur = conn.execute(
                 """
                 INSERT INTO replies (
-                  thread_id, user_id, body, attachment_path, attachment_name, attachment_type, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                  thread_id, user_id, parent_reply_id, body, attachment_path, attachment_name, attachment_type, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (thread_id, user["id"], body, first_upload.get("path", ""), first_upload.get("name", ""), first_upload.get("mime_type", ""), now()),
+                (
+                    thread_id, user["id"], parent_reply_id, body,
+                    first_upload.get("path", ""), first_upload.get("name", ""), first_upload.get("mime_type", ""), now(),
+                ),
             )
             insert_attachments(conn, "reply", cur.lastrowid, uploads)
         return self.send_json({"ok": True})
@@ -3376,6 +3403,11 @@ class Handler(SimpleHTTPRequestHandler):
             "author_name": row["author_name"],
             "author_role": row["author_role"],
             "body": row["body"],
+            "reply_to": {
+                "id": safe_row_value(row, "parent_reply_id", 0),
+                "author_name": safe_row_value(row, "reply_to_author_name", ""),
+                "body": safe_row_value(row, "reply_to_body", ""),
+            } if safe_row_value(row, "parent_reply_id", 0) and safe_row_value(row, "reply_to_body", "") else None,
             "attachments": merged_attachments,
             "attachment_path": first_attachment.get("path", ""),
             "attachment_name": first_attachment.get("name", ""),

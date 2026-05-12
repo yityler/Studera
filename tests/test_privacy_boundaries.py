@@ -506,6 +506,37 @@ class StuderaPrivacyTests(unittest.TestCase):
         self.assertEqual(data["thread"]["curriculum"], "SAS Design Studio")
         self.assertEqual(data["thread"]["section"], "Robotics Studio")
 
+    def test_replies_can_reference_specific_replies(self):
+        author = self.register_verified("reply-thread-author@example-w.edu", "Example W School", "example-w.edu")
+        status, data = author.request("POST", "/api/threads", {
+            "title": "Nested reply context",
+            "body": "Can someone respond to the first answer directly?",
+            "curriculum": "AP Curriculum",
+            "section": "AP Biology",
+        })
+        self.assertEqual(status, 200, data)
+        thread_id = data["thread"]["id"]
+
+        status, data = author.request("POST", f"/api/threads/{thread_id}/replies", {
+            "body": "This is the answer that should be quoted.",
+        })
+        self.assertEqual(status, 200, data)
+        with server.db() as conn:
+            parent_id = conn.execute("SELECT id FROM replies WHERE thread_id = ?", (thread_id,)).fetchone()["id"]
+
+        status, data = author.request("POST", f"/api/threads/{thread_id}/replies", {
+            "body": "I am replying directly to that answer.",
+            "parent_reply_id": parent_id,
+        })
+        self.assertEqual(status, 200, data)
+
+        status, data = author.request("GET", f"/api/threads/{thread_id}")
+        self.assertEqual(status, 200, data)
+        child = data["replies"][1]
+        self.assertEqual(child["reply_to"]["id"], parent_id)
+        self.assertEqual(child["reply_to"]["author_name"], "reply-thread-author")
+        self.assertEqual(child["reply_to"]["body"], "This is the answer that should be quoted.")
+
     def test_site_admin_cannot_revoke_only_school_admin(self):
         self.register_verified("sole-school-admin@example-k.edu", "Example K School", "example-k.edu")
         with server.db() as conn:
