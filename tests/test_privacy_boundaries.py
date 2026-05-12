@@ -481,6 +481,7 @@ class StuderaPrivacyTests(unittest.TestCase):
             "section": "Robotics Lab",
         })
         self.assertEqual(status, 200, data)
+        thread_id = data["thread"]["id"]
 
         status, data = admin.request("POST", "/api/threads", {
             "title": "Wrong class",
@@ -490,6 +491,20 @@ class StuderaPrivacyTests(unittest.TestCase):
         })
         self.assertEqual(status, 403)
         self.assertIn("Choose a section", data["error"])
+
+        status, data = admin.request("POST", "/api/admin/school", {
+            "curricula": ["AP Curriculum"],
+            "custom_curricula": [
+                {"name": "SAS Design Studio", "sections": ["Robotics Studio", "Advanced Journalism"]},
+            ],
+            "guidelines": "",
+        })
+        self.assertEqual(status, 200, data)
+
+        status, data = admin.request("GET", f"/api/threads/{thread_id}")
+        self.assertEqual(status, 200, data)
+        self.assertEqual(data["thread"]["curriculum"], "SAS Design Studio")
+        self.assertEqual(data["thread"]["section"], "Robotics Studio")
 
     def test_site_admin_cannot_revoke_only_school_admin(self):
         self.register_verified("sole-school-admin@example-k.edu", "Example K School", "example-k.edu")

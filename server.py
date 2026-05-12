@@ -705,6 +705,75 @@ def thread_school_filter(alias, user):
     )
 
 
+def reconcile_custom_curriculum_tags(conn, user, old_custom, new_custom):
+    """Carry admin renames through to existing thread curriculum and class tags."""
+    if not old_custom:
+        return []
+    clause, values = thread_school_filter("threads", user)
+    updates = []
+    matched_new_indexes = set()
+
+    for old_index, old_item in enumerate(old_custom):
+        old_name = old_item.get("name", "")
+        if not old_name:
+            continue
+        new_index = next(
+            (index for index, item in enumerate(new_custom) if item.get("name", "").lower() == old_name.lower()),
+            None,
+        )
+        if new_index is None and old_index < len(new_custom) and old_index not in matched_new_indexes:
+            new_index = old_index
+        if new_index is None or new_index >= len(new_custom):
+            continue
+        matched_new_indexes.add(new_index)
+        new_item = new_custom[new_index]
+        new_name = new_item.get("name", "")
+        if not new_name:
+            continue
+
+        old_sections = old_item.get("sections", []) or []
+        new_sections = new_item.get("sections", []) or []
+        matched_section_indexes = set()
+        for old_section_index, old_section in enumerate(old_sections):
+            if not old_section:
+                continue
+            new_section_index = next(
+                (index for index, section in enumerate(new_sections) if section.lower() == old_section.lower()),
+                None,
+            )
+            if new_section_index is None and old_section_index < len(new_sections) and old_section_index not in matched_section_indexes:
+                new_section_index = old_section_index
+            if new_section_index is None or new_section_index >= len(new_sections):
+                continue
+            matched_section_indexes.add(new_section_index)
+            new_section = new_sections[new_section_index]
+            if new_section and new_section != old_section:
+                conn.execute(
+                    f"""
+                    UPDATE threads
+                    SET section = ?
+                    WHERE {clause}
+                      AND LOWER(curriculum) = LOWER(?)
+                      AND section = ?
+                    """,
+                    [new_section] + values + [old_name, old_section],
+                )
+                updates.append({"type": "section", "from": old_section, "to": new_section, "curriculum": old_name})
+
+        if new_name != old_name:
+            conn.execute(
+                f"""
+                UPDATE threads
+                SET curriculum = ?
+                WHERE {clause}
+                  AND curriculum = ?
+                """,
+                [new_name] + values + [old_name],
+            )
+            updates.append({"type": "curriculum", "from": old_name, "to": new_name})
+    return updates
+
+
 def school_from_thread_row(row, prefix="author"):
     school = safe_row_value(row, "thread_school", safe_row_value(row, "school", ""))
     school_country = safe_row_value(row, "thread_school_country", safe_row_value(row, "school_country", ""))
@@ -2442,6 +2511,7 @@ class Handler(SimpleHTTPRequestHandler):
         regenerate_join_key = bool(data.get("regenerate_join_key"))
         with db() as conn:
             school = school_settings_for(conn, user["institution"], user.get("institution_domain", ""))
+            old_custom_curricula = parse_custom_curricula(safe_row_value(school, "custom_curricula", "[]")) if school else []
             if clear_join_key:
                 join_salt, join_hash, join_plain = "", "", ""
             elif regenerate_join_key:
@@ -2491,10 +2561,12 @@ class Handler(SimpleHTTPRequestHandler):
                 """,
                 ("|".join(curricula), user.get("institution_domain", ""), user.get("institution_domain", ""), user["institution"], user.get("institution_domain", "")),
             )
+            tag_updates = reconcile_custom_curriculum_tags(conn, user, old_custom_curricula, custom_curricula)
             school = school_settings_for(conn, user["institution"], user.get("institution_domain", ""))
             log_audit(conn, user, "update_school_settings", "school", user["institution"], user["institution"], {
                 "curricula": curricula,
                 "custom_curricula": custom_curricula,
+                "tag_updates": tag_updates,
                 "join_key_changed": bool(join_key or regenerate_join_key),
                 "join_key_cleared": clear_join_key,
             })
