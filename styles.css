@@ -52,7 +52,7 @@ body {
 html[data-theme="dark"] .site-nav {
   background:
     linear-gradient(180deg, rgba(14, 22, 34, calc(var(--nav-glass-alpha) * 0.88)), rgba(14, 22, 34, calc(var(--nav-glass-alpha) * 0.5))),
-    rgba(14, 22, 34, 0.72);
+    var(--bg);
   box-shadow:
     0 18px 48px rgba(0, 0, 0, calc(var(--nav-shadow-alpha) * 2.2)),
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
@@ -91,7 +91,7 @@ strong { font-weight: 400; }
 .site-nav {
   --nav-shadow-alpha: 0;
   --nav-edge-alpha: 0;
-  --nav-glass-alpha: 0.42;
+  --nav-glass-alpha: 0;
   position: sticky;
   top: 0;
   z-index: 50;
@@ -99,7 +99,7 @@ strong { font-weight: 400; }
   border-bottom: 1px solid rgba(226, 232, 240, var(--nav-edge-alpha));
   background:
     linear-gradient(180deg, rgba(255, 255, 255, calc(var(--nav-glass-alpha) * 0.52)), rgba(248, 250, 252, calc(var(--nav-glass-alpha) * 0.24))),
-    rgba(248, 250, 252, 0.72);
+    var(--bg);
   box-shadow:
     0 18px 48px rgba(26, 54, 93, var(--nav-shadow-alpha)),
     inset 0 1px 0 rgba(255, 255, 255, 0.86),

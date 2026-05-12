@@ -836,7 +836,7 @@ function installNavShadow() {
     const progress = Math.min(window.scrollY / 90, 1);
     nav.style.setProperty("--nav-shadow-alpha", (progress * 0.14).toFixed(3));
     nav.style.setProperty("--nav-edge-alpha", (progress * 0.18).toFixed(3));
-    nav.style.setProperty("--nav-glass-alpha", (0.42 + progress * 0.58).toFixed(3));
+    nav.style.setProperty("--nav-glass-alpha", progress.toFixed(3));
   };
   const requestUpdate = () => {
     if (ticking) return;
