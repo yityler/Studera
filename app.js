@@ -1984,8 +1984,6 @@ function threadCard(thread) {
         <span class="meta">${escapeHtml(thread.created_at)}</span>
       </div>
       <a href="thread.html?id=${thread.id}"><h2>${escapeHtml(thread.title)}</h2></a>
-      ${renderRichText(thread.preview)}
-      ${renderAttachments(thread)}
       <div class="action-row" style="margin-top:16px;">
         <button class="text-action ${thread.supported ? "active" : ""}" data-support-thread="${thread.id}" type="button">Support ${thread.supports}</button>
         <span class="meta">${thread.replies} responses</span>
