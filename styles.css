@@ -741,30 +741,6 @@ a:focus-visible,
   color: #163982;
 }
 
-.curriculum-status {
-  display: grid;
-  gap: 4px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.68);
-  margin: -8px 0 18px;
-  padding: 12px;
-}
-
-.curriculum-status span {
-  color: var(--gold);
-  font-family: var(--label);
-  font-size: 0.64rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.curriculum-status strong {
-  color: var(--ink);
-  font-size: 0.92rem;
-  line-height: 1.35;
-}
-
 .content-stack { display: grid; gap: 18px; }
 
 .page-title {
@@ -860,8 +836,7 @@ html[data-theme="dark"] .file-attachment,
 html[data-theme="dark"] .upload-item,
 html[data-theme="dark"] .attachment,
 html[data-theme="dark"] .modal-actions,
-html[data-theme="dark"] .file-drop,
-html[data-theme="dark"] .curriculum-status {
+html[data-theme="dark"] .file-drop {
   background: var(--card);
   color: var(--ink);
   border-color: var(--border);

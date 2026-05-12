@@ -1769,16 +1769,6 @@ function updateClassFilterOptions() {
   setStaticSelectValue(wrapper, sections.includes(current) ? current : "");
 }
 
-function updateCurriculumStatus(allowedList = allowedCurricula()) {
-  const target = $("[data-curriculum-status]");
-  if (!target) return;
-  const curricula = allowedList.length ? allowedList : ALL_CURRICULA;
-  target.innerHTML = `
-    <span>Curriculum added</span>
-    <strong>${escapeHtml(curricula.join(", "))}</strong>
-  `;
-}
-
 function updateSectionOptions(curriculum) {
   const wrapper = $("[data-section-select]");
   const menu = $("[data-section-menu]");
@@ -1829,7 +1819,6 @@ function setCurriculumOptions(allowed) {
   const allowedList = allowed && allowed.length ? allowed : ALL_CURRICULA;
   const allowSet = new Set(allowedList);
   renderCurriculumFilters(allowedList);
-  updateCurriculumStatus(allowedList);
   updateClassFilterOptions();
 
   $all("[data-curriculum]").forEach((button) => {
