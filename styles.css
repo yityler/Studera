@@ -1167,6 +1167,37 @@ body.is-bookmarked .composer-authed {
   color: var(--danger);
 }
 
+html[data-theme="dark"] .text-action {
+  border-color: #40526B;
+  background: #182538;
+  color: #C5D2E4;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+html[data-theme="dark"] .text-action:hover {
+  border-color: #6F86AA;
+  background: #20314A;
+  color: #F2F6FC;
+}
+
+html[data-theme="dark"] .text-action.active {
+  border-color: #8EABDA;
+  background: #263E66;
+  color: #F8FAFC;
+}
+
+html[data-theme="dark"] .text-action.danger {
+  border-color: rgba(240, 138, 138, 0.46);
+  background: rgba(159, 45, 45, 0.16);
+  color: #FFB7B7;
+}
+
+html[data-theme="dark"] .text-action.danger:hover {
+  border-color: rgba(240, 138, 138, 0.72);
+  background: rgba(159, 45, 45, 0.28);
+  color: #FFE0E0;
+}
+
 .empty-state {
   min-height: 360px;
   display: grid;
@@ -2255,6 +2286,38 @@ html[data-theme="dark"] .reply-card p {
   border-color: var(--navy);
   background: white;
   box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.08);
+}
+
+html[data-theme="dark"] .compact-select .custom-select-button,
+html[data-theme="dark"] .custom-select-button {
+  border-color: #415675;
+  background: #162234;
+  color: #E5EAF2;
+}
+
+html[data-theme="dark"] .custom-select-button::after {
+  border-left: 1px solid #526A8D;
+  background: #2B4368;
+  color: #F4F7FC;
+}
+
+html[data-theme="dark"] .custom-select.open .custom-select-button {
+  border-color: #8EABDA;
+  background: #18283D;
+  box-shadow: 0 0 0 3px rgba(142, 171, 218, 0.14);
+}
+
+html[data-theme="dark"] .search-bar input {
+  border-color: #415675;
+  background: #162234;
+}
+
+html[data-theme="dark"] .filter-toggle {
+  color: #92A2B8;
+}
+
+html[data-theme="dark"] .filter-toggle input {
+  accent-color: #8EABDA;
 }
 
 .custom-select-menu,
