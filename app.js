@@ -99,9 +99,13 @@ function resolveTheme(choice) {
   return choice === "dark" ? "dark" : "light";
 }
 
+function shouldForceLightTheme() {
+  return state.user === null;
+}
+
 function applyTheme(choice = storedTheme()) {
   const normalized = ["light", "dark", "system"].includes(choice) ? choice : "light";
-  const resolved = resolveTheme(normalized);
+  const resolved = shouldForceLightTheme() ? "light" : resolveTheme(normalized);
   document.documentElement.dataset.themeChoice = normalized;
   document.documentElement.dataset.theme = resolved;
   try {
@@ -684,6 +688,7 @@ function openReportModal({ targetType, targetId }) {
 
 function updateAuthUI() {
   document.body.classList.toggle("is-authed", Boolean(state.user));
+  applyTheme(storedTheme());
   $(".brand")?.setAttribute("href", state.user?.is_site_admin ? "site-admin.html" : (state.user ? "feed.html" : "index.html"));
   renderNavLinks();
   $all("[data-auth-open]").forEach((button) => {
