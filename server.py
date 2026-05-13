@@ -29,6 +29,19 @@ DB_PATH = configured_path("STUDERA_DB_PATH", os.path.join(ROOT, "studera.db"))
 INSTITUTIONS_PATH = os.path.join(ROOT, "institutions.json")
 UPLOADS_DIR = configured_path("STUDERA_UPLOADS_DIR", os.path.join(ROOT, "uploads"))
 SESSION_COOKIE = "studera_session"
+THEME_CHOICE_COOKIE = "studera_theme_choice"
+THEME_RENDER_COOKIE = "studera_theme_render"
+COLOR_THEME_COOKIE = "studera_color_theme"
+PUBLIC_LIGHT_HTML = {"", "index.html", "about.html", "contact.html"}
+VALID_THEME_CHOICES = {"light", "dark", "system"}
+VALID_RENDER_THEMES = {"light", "dark"}
+VALID_COLOR_THEMES = {"studera", "github", "ayu", "monokai-pro", "min", "everforest", "amethyst", "better-solarized"}
+CRITICAL_THEME_STYLE = (
+    '<style id="studera-theme-critical">'
+    'html[data-theme="dark"],html[data-theme="dark"] body{background:#0E1622;color:#E5EAF2;color-scheme:dark;}'
+    'html[data-theme="light"],html[data-theme="light"] body{background:#F8FAFC;color:#1E293B;color-scheme:light;}'
+    '</style>'
+)
 INSTITUTIONS_CACHE = None
 RATE_LIMITS = {}
 ALL_CURRICULA = ["AP Curriculum", "IB Diploma", "A-Levels", "SAT / ACT", "GCSE", "Research"]
@@ -215,6 +228,7 @@ def init_db():
               role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'staff')),
               profile_title TEXT DEFAULT '',
               bio TEXT DEFAULT '',
+              avatar_path TEXT DEFAULT '',
               profile_visibility TEXT DEFAULT 'school',
               show_school INTEGER DEFAULT 1,
               show_email INTEGER DEFAULT 0,
@@ -381,6 +395,7 @@ def init_db():
                   role TEXT NOT NULL CHECK(role IN ('student', 'teacher', 'staff')),
                   profile_title TEXT DEFAULT '',
                   bio TEXT DEFAULT '',
+                  avatar_path TEXT DEFAULT '',
                   profile_visibility TEXT DEFAULT 'school',
                   show_school INTEGER DEFAULT 1,
                   show_email INTEGER DEFAULT 0,
@@ -394,7 +409,7 @@ def init_db():
                 );
                 INSERT INTO users_new (
                   id, name, email, institution, institution_country, institution_domain,
-                  curricula, role, profile_title, bio, profile_visibility, show_school, show_email,
+                  curricula, role, profile_title, bio, avatar_path, profile_visibility, show_school, show_email,
                   email_replies, email_digest, is_school_admin, is_site_admin, salt, password_hash, created_at
                 )
                 SELECT
@@ -403,6 +418,7 @@ def init_db():
                   COALESCE(institution_domain, ''),
                   COALESCE(curricula, ''),
                   CASE WHEN role IN ('student', 'teacher', 'staff') THEN role ELSE 'student' END,
+                  '',
                   '',
                   '',
                   'school',
@@ -427,6 +443,7 @@ def init_db():
         for column in (
             "profile_title TEXT DEFAULT ''",
             "bio TEXT DEFAULT ''",
+            "avatar_path TEXT DEFAULT ''",
             "profile_visibility TEXT DEFAULT 'school'",
             "show_school INTEGER DEFAULT 1",
             "show_email INTEGER DEFAULT 0",
@@ -719,11 +736,15 @@ def reconcile_custom_curriculum_tags(conn, user, old_custom, new_custom):
     matched_new_indexes = set()
 
     for old_index, old_item in enumerate(old_custom):
-        old_name = old_item.get("name", "")
+        old_name = str(old_item.get("name", "")).strip()
         if not old_name:
             continue
         new_index = next(
-            (index for index, item in enumerate(new_custom) if item.get("name", "").lower() == old_name.lower()),
+            (
+                index
+                for index, item in enumerate(new_custom)
+                if str(item.get("name", "")).strip().lower() == old_name.lower()
+            ),
             None,
         )
         if new_index is None and old_index < len(new_custom) and old_index not in matched_new_indexes:
@@ -732,12 +753,12 @@ def reconcile_custom_curriculum_tags(conn, user, old_custom, new_custom):
             continue
         matched_new_indexes.add(new_index)
         new_item = new_custom[new_index]
-        new_name = new_item.get("name", "")
+        new_name = str(new_item.get("name", "")).strip()
         if not new_name:
             continue
 
-        old_sections = old_item.get("sections", []) or []
-        new_sections = new_item.get("sections", []) or []
+        old_sections = [str(section).strip() for section in (old_item.get("sections", []) or []) if str(section).strip()]
+        new_sections = [str(section).strip() for section in (new_item.get("sections", []) or []) if str(section).strip()]
         matched_section_indexes = set()
         for old_section_index, old_section in enumerate(old_sections):
             if not old_section:
@@ -758,12 +779,30 @@ def reconcile_custom_curriculum_tags(conn, user, old_custom, new_custom):
                     UPDATE threads
                     SET section = ?
                     WHERE {clause}
-                      AND LOWER(curriculum) = LOWER(?)
-                      AND section = ?
+                      AND LOWER(curriculum) IN (LOWER(?), LOWER(?))
+                      AND LOWER(section) = LOWER(?)
                     """,
-                    [new_section] + values + [old_name, old_section],
+                    [new_section] + values + [old_name, new_name, old_section],
                 )
                 updates.append({"type": "section", "from": old_section, "to": new_section, "curriculum": old_name})
+
+        if len(old_sections) == 1 and len(new_sections) == 1 and old_sections[0] != new_sections[0]:
+            conn.execute(
+                f"""
+                UPDATE threads
+                SET section = ?
+                WHERE {clause}
+                  AND LOWER(curriculum) IN (LOWER(?), LOWER(?))
+                  AND LOWER(section) != LOWER(?)
+                """,
+                [new_sections[0]] + values + [old_name, new_name, new_sections[0]],
+            )
+            updates.append({
+                "type": "section_fallback",
+                "from": old_sections[0],
+                "to": new_sections[0],
+                "curriculum": old_name,
+            })
 
         if new_name != old_name:
             conn.execute(
@@ -771,7 +810,7 @@ def reconcile_custom_curriculum_tags(conn, user, old_custom, new_custom):
                 UPDATE threads
                 SET curriculum = ?
                 WHERE {clause}
-                  AND curriculum = ?
+                  AND LOWER(curriculum) = LOWER(?)
                 """,
                 [new_name] + values + [old_name],
             )
@@ -1062,6 +1101,7 @@ def delete_user_account_records(conn, target, actor=None, audit_action="delete_a
     conn.execute("DELETE FROM auth_tokens WHERE user_id = ?", (user_id,))
     log_audit(conn, actor or target_user, audit_action, "user", user_id, target_user.get("institution", ""), {"email": target_user.get("email", "")})
     conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    delete_upload(target_user.get("avatar_path", ""))
 
 
 def verify_join_key(join_key, settings_row):
@@ -1138,6 +1178,17 @@ def save_upload(data_url, original_name=""):
         handle.write(blob)
     clean_name = os.path.basename(str(original_name or "Attachment")).strip()[:160]
     return f"uploads/{filename}", clean_name or "Attachment", mime
+
+
+def save_avatar(data_url, original_name=""):
+    if not data_url:
+        return ""
+    path, _name, mime = save_upload(data_url, original_name or "profile-picture")
+    allowed = {"image/png", "image/jpeg", "image/webp", "image/gif"}
+    if str(mime or "").lower() not in allowed:
+        delete_upload(path)
+        raise ValueError("Profile picture must be a PNG, JPEG, WebP, or GIF image.")
+    return path
 
 
 def upload_disk_path(relative_path):
@@ -1273,6 +1324,7 @@ def public_user(row):
         "role": row["role"],
         "profile_title": row["profile_title"] or "",
         "bio": row["bio"] or "",
+        "avatar_path": safe_row_value(row, "avatar_path", ""),
         "profile_visibility": row["profile_visibility"] or "school",
         "show_school": bool(row["show_school"]),
         "show_email": bool(row["show_email"]),
@@ -1329,13 +1381,67 @@ class Handler(SimpleHTTPRequestHandler):
             return {}
         return json.loads(self.rfile.read(length).decode())
 
-    def cookie_token(self):
+    def cookie_value(self, name):
         cookie = self.headers.get("Cookie", "")
         for part in cookie.split(";"):
             key, _, value = part.strip().partition("=")
-            if key == SESSION_COOKIE:
+            if key == name:
                 return value
         return None
+
+    def cookie_token(self):
+        return self.cookie_value(SESSION_COOKIE)
+
+    def theme_for_html(self, parsed):
+        filename = os.path.basename(parsed.path) or "index.html"
+        color_theme = self.cookie_value(COLOR_THEME_COOKIE) or "studera"
+        if color_theme not in VALID_COLOR_THEMES:
+            color_theme = "studera"
+        if filename in PUBLIC_LIGHT_HTML:
+            return "light", "light", color_theme
+        choice = self.cookie_value(THEME_CHOICE_COOKIE) or "dark"
+        if choice not in VALID_THEME_CHOICES:
+            choice = "dark"
+        render = self.cookie_value(THEME_RENDER_COOKIE)
+        if render not in VALID_RENDER_THEMES:
+            render = "light" if choice == "light" else "dark"
+        return choice, render, color_theme
+
+    def inject_theme_into_html(self, html, parsed):
+        choice, render, color_theme = self.theme_for_html(parsed)
+        if "<html" in html:
+            html = re.sub(
+                r"<html[^>]*>",
+                (
+                    f'<html lang="en" data-theme-choice="{choice}" data-theme="{render}" data-color-theme="{color_theme}" '
+                    f'style="background: {"#0E1622" if render == "dark" else "#F8FAFC"}; '
+                    f'color: {"#E5EAF2" if render == "dark" else "#1E293B"}; color-scheme: {render}">'
+                ),
+                html,
+                count=1,
+            )
+        if "studera-theme-critical" not in html:
+            html = html.replace("<head>", f"<head>\n    {CRITICAL_THEME_STYLE}", 1)
+        return html
+
+    def send_themed_html(self, parsed):
+        path = self.translate_path(self.path)
+        if os.path.isdir(path):
+            path = os.path.join(path, "index.html")
+        if not path.endswith(".html") or not os.path.isfile(path):
+            return False
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                html = handle.read()
+        except OSError:
+            return False
+        body = self.inject_theme_into_html(html, parsed).encode("utf-8")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+        return True
 
     def current_user(self):
         token = self.cookie_token()
@@ -1436,6 +1542,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.get_thread(int(parts[2]))
         if parsed.path.startswith("/api/"):
             return self.send_json({"error": "Not found."}, HTTPStatus.NOT_FOUND)
+        if self.send_themed_html(parsed):
+            return
         return super().do_GET()
 
     def search_institutions(self, parsed):
@@ -1495,6 +1603,7 @@ class Handler(SimpleHTTPRequestHandler):
             threads = conn.execute(
                 """
                 SELECT threads.*, users.name author_name, users.role author_role,
+                  users.avatar_path author_avatar_path,
                   users.institution author_institution,
                   users.institution_country author_institution_country,
                   users.institution_domain author_institution_domain,
@@ -2322,11 +2431,22 @@ class Handler(SimpleHTTPRequestHandler):
             visibility = "school"
         if not name:
             return self.send_json({"error": "Display name is required."}, HTTPStatus.BAD_REQUEST)
+        old_avatar = safe_row_value(user, "avatar_path", "")
+        new_avatar = old_avatar
+        uploaded_avatar = ""
+        try:
+            if data.get("remove_avatar"):
+                new_avatar = ""
+            if data.get("avatar_file_data"):
+                uploaded_avatar = save_avatar(data.get("avatar_file_data"), data.get("avatar_file_name", "profile-picture"))
+                new_avatar = uploaded_avatar
+        except ValueError as exc:
+            return self.send_json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
         with db() as conn:
             conn.execute(
                 """
                 UPDATE users
-                SET name = ?, profile_title = ?, role = ?, bio = ?, profile_visibility = ?,
+                SET name = ?, profile_title = ?, role = ?, bio = ?, avatar_path = ?, profile_visibility = ?,
                     show_school = ?, show_email = ?, email_replies = ?, email_digest = ?
                 WHERE id = ?
                 """,
@@ -2335,6 +2455,7 @@ class Handler(SimpleHTTPRequestHandler):
                     profile_title,
                     role,
                     bio,
+                    new_avatar,
                     visibility,
                     1 if data.get("show_school") else 0,
                     1 if data.get("show_email") else 0,
@@ -2344,6 +2465,8 @@ class Handler(SimpleHTTPRequestHandler):
                 ),
             )
             row = conn.execute("SELECT * FROM users WHERE id = ?", (user["id"],)).fetchone()
+        if old_avatar and old_avatar != new_avatar:
+            delete_upload(old_avatar)
         return self.send_json({"user": public_user(row)})
 
     def change_school(self):
@@ -2835,6 +2958,7 @@ class Handler(SimpleHTTPRequestHandler):
             rows = conn.execute(
                 f"""
                 SELECT threads.*, users.name author_name, users.role author_role,
+                  users.avatar_path author_avatar_path,
                   users.institution author_institution,
                   users.institution_country author_institution_country,
                   users.institution_domain author_institution_domain,
@@ -2988,6 +3112,7 @@ class Handler(SimpleHTTPRequestHandler):
             "author_id": row["user_id"],
             "author_name": row["author_name"],
             "author_role": row["author_role"],
+            "author_avatar_path": safe_row_value(row, "author_avatar_path", ""),
             "created_at": fmt(row["created_at"]),
             "replies": row["replies"],
             "supports": row["supports"],
@@ -3009,6 +3134,7 @@ class Handler(SimpleHTTPRequestHandler):
             row = conn.execute(
                 """
                 SELECT threads.*, users.name author_name, users.role author_role,
+                  users.avatar_path author_avatar_path,
                   users.institution author_institution,
                   users.institution_country author_institution_country,
                   users.institution_domain author_institution_domain,
@@ -3028,6 +3154,7 @@ class Handler(SimpleHTTPRequestHandler):
             replies = conn.execute(
                 """
                 SELECT replies.*, users.name author_name, users.role author_role,
+                  users.avatar_path author_avatar_path,
                   parent_replies.body reply_to_body,
                   parent_users.name reply_to_author_name,
                   (SELECT COUNT(*) FROM reply_supports WHERE reply_supports.reply_id = replies.id) supports,
@@ -3402,6 +3529,7 @@ class Handler(SimpleHTTPRequestHandler):
             "author_id": row["user_id"],
             "author_name": row["author_name"],
             "author_role": row["author_role"],
+            "author_avatar_path": safe_row_value(row, "author_avatar_path", ""),
             "body": row["body"],
             "reply_to": {
                 "id": safe_row_value(row, "parent_reply_id", 0),

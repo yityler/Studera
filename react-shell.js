@@ -42,6 +42,11 @@
 
     async function logout() {
       await api("/api/auth/logout", { method: "POST", body: "{}" });
+      try {
+        localStorage.removeItem("studera-authenticated");
+      } catch {
+        // Local storage can be blocked in some browser privacy modes.
+      }
       setUser(null);
       window.dispatchEvent(new CustomEvent("studera:session", { detail: null }));
       location.href = "index.html";

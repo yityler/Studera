@@ -244,6 +244,59 @@ class StuderaPrivacyTests(unittest.TestCase):
             self.assertEqual(response.status, 200)
             self.assertEqual(response.read(), b"Studera upload fixture")
 
+    def test_user_can_upload_profile_picture(self):
+        client = self.register_verified("avatar-user@example-y.edu", "Example Y School", "example-y.edu")
+        avatar_data = "data:image/png;base64," + base64.b64encode(
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+            b"\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06\x00\x00\x00"
+            b"\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc`\x00\x00\x00\x02\x00\x01"
+            b"\xe2!\xbc3\x00\x00\x00\x00IEND\xaeB`\x82"
+        ).decode()
+        status, data = client.request("POST", "/api/settings", {
+            "name": "Avatar User",
+            "profile_title": "Image tester",
+            "role": "student",
+            "bio": "",
+            "profile_visibility": "school",
+            "show_school": True,
+            "show_email": False,
+            "email_replies": True,
+            "email_digest": False,
+            "avatar_file_data": avatar_data,
+            "avatar_file_name": "avatar.png",
+        })
+        self.assertEqual(status, 200, data)
+        avatar_path = data["user"]["avatar_path"]
+        self.assertTrue(avatar_path.startswith("uploads/"))
+        self.assertTrue(os.path.exists(os.path.join(server.UPLOADS_DIR, os.path.basename(avatar_path))))
+
+        status, data = client.request("POST", "/api/threads", {
+            "title": "Avatar thread",
+            "body": "The author avatar should be included.",
+            "curriculum": "AP Curriculum",
+            "section": "AP Biology",
+        })
+        self.assertEqual(status, 200, data)
+        thread_id = data["thread"]["id"]
+        status, data = client.request("GET", f"/api/threads/{thread_id}")
+        self.assertEqual(status, 200, data)
+        self.assertEqual(data["thread"]["author_avatar_path"], avatar_path)
+
+        status, data = client.request("POST", "/api/settings", {
+            "name": "Avatar User",
+            "profile_title": "Image tester",
+            "role": "student",
+            "bio": "",
+            "profile_visibility": "school",
+            "show_school": True,
+            "show_email": False,
+            "email_replies": True,
+            "email_digest": False,
+            "remove_avatar": True,
+        })
+        self.assertEqual(status, 200, data)
+        self.assertEqual(data["user"]["avatar_path"], "")
+
     def test_school_admin_cannot_moderate_other_school(self):
         school_a = self.register_verified("moderated@example-c.edu", "Example C School", "example-c.edu")
         status, data = school_a.request("POST", "/api/threads", {
@@ -505,6 +558,45 @@ class StuderaPrivacyTests(unittest.TestCase):
         self.assertEqual(status, 200, data)
         self.assertEqual(data["thread"]["curriculum"], "SAS Design Studio")
         self.assertEqual(data["thread"]["section"], "Robotics Studio")
+
+    def test_custom_curriculum_rename_updates_stale_single_class_tags(self):
+        admin = self.register_verified("custom-stale-admin@example-x.edu", "Example X School", "example-x.edu")
+        with server.db() as conn:
+            conn.execute("UPDATE users SET is_school_admin = 1 WHERE email = ?", ("custom-stale-admin@example-x.edu",))
+
+        status, data = admin.request("POST", "/api/admin/school", {
+            "curricula": ["AP Curriculum"],
+            "custom_curricula": [
+                {"name": "Math Competitions", "sections": ["AIME"]},
+            ],
+            "guidelines": "",
+        })
+        self.assertEqual(status, 200, data)
+
+        status, data = admin.request("POST", "/api/threads", {
+            "title": "Contest math tag",
+            "body": "This thread should follow the renamed custom tags.",
+            "curriculum": "Math Competitions",
+            "section": "AIME",
+        })
+        self.assertEqual(status, 200, data)
+        thread_id = data["thread"]["id"]
+        with server.db() as conn:
+            conn.execute("UPDATE threads SET section = ? WHERE id = ?", ("stale contest tag", thread_id))
+
+        status, data = admin.request("POST", "/api/admin/school", {
+            "curricula": ["AP Curriculum"],
+            "custom_curricula": [
+                {"name": "Contest Math", "sections": ["Olympiad"]},
+            ],
+            "guidelines": "",
+        })
+        self.assertEqual(status, 200, data)
+
+        status, data = admin.request("GET", f"/api/threads/{thread_id}")
+        self.assertEqual(status, 200, data)
+        self.assertEqual(data["thread"]["curriculum"], "Contest Math")
+        self.assertEqual(data["thread"]["section"], "Olympiad")
 
     def test_replies_can_reference_specific_replies(self):
         author = self.register_verified("reply-thread-author@example-w.edu", "Example W School", "example-w.edu")

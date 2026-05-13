@@ -83,12 +83,42 @@ const SECTIONS_BY_CURRICULUM = {
 
 const customSectionsByCurriculum = {};
 const THEME_KEY = "studera-theme";
+const THEME_MODE_KEY = "studera-theme-mode";
+const COLOR_THEME_KEY = "studera-color-theme";
+const THEME_CHOICE_COOKIE = "studera_theme_choice";
+const THEME_RENDER_COOKIE = "studera_theme_render";
+const COLOR_THEME_COOKIE = "studera_color_theme";
+const AUTH_HINT_KEY = "studera-authenticated";
+const THEME_MODES = ["light", "dark", "system"];
+const COLOR_THEMES = [
+  { id: "studera", label: "Studera", colors: ["#F8FAFC", "#1A365D", "#8A5A14", "#E2E8F0"] },
+  { id: "github", label: "GitHub", colors: ["#F6F8FA", "#0969DA", "#1F883D", "#D0D7DE"] },
+  { id: "ayu", label: "Ayu", colors: ["#FAFAFA", "#FF9940", "#55B4D4", "#E6E1CF"] },
+  { id: "monokai-pro", label: "Monokai Pro", colors: ["#FFFDF7", "#FF6188", "#78DCE8", "#FFD866"] },
+  { id: "min", label: "Min Theme", colors: ["#FFFFFF", "#006EDB", "#6B7280", "#E5E7EB"] },
+  { id: "everforest", label: "Everforest", colors: ["#FDF6E3", "#8DA101", "#DFA000", "#E6E2CC"] },
+  { id: "amethyst", label: "Amethyst", colors: ["#FBF8FF", "#7C3AED", "#B892FF", "#E8DDF8"] },
+  { id: "better-solarized", label: "Better Solarized", colors: ["#FDF6E3", "#268BD2", "#B58900", "#EEE8D5"] },
+];
 
-function storedTheme() {
+function storedThemeMode() {
   try {
-    return localStorage.getItem(THEME_KEY) || "light";
+    return (
+      localStorage.getItem(THEME_MODE_KEY) ||
+      localStorage.getItem(THEME_KEY) ||
+      document.documentElement.dataset.themeChoice ||
+      (isPublicLightPage() ? "light" : "dark")
+    );
   } catch {
-    return "light";
+    return document.documentElement.dataset.themeChoice || (isPublicLightPage() ? "light" : "dark");
+  }
+}
+
+function storedColorTheme() {
+  try {
+    return localStorage.getItem(COLOR_THEME_KEY) || document.documentElement.dataset.colorTheme || "studera";
+  } catch {
+    return document.documentElement.dataset.colorTheme || "studera";
   }
 }
 
@@ -99,17 +129,60 @@ function resolveTheme(choice) {
   return choice === "dark" ? "dark" : "light";
 }
 
-function shouldForceLightTheme() {
-  return state.user === null;
+function isPublicLightPage() {
+  const page = document.body?.dataset?.page || "";
+  const filename = location.pathname.split("/").pop() || "index.html";
+  return ["home", "about", "contact"].includes(page) || ["", "index.html", "about.html", "contact.html"].includes(filename);
 }
 
-function applyTheme(choice = storedTheme()) {
-  const normalized = ["light", "dark", "system"].includes(choice) ? choice : "light";
-  const resolved = shouldForceLightTheme() ? "light" : resolveTheme(normalized);
+function shouldForceLightTheme() {
+  return isPublicLightPage();
+}
+
+function writeThemeCookie(name, value) {
+  try {
+    document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  } catch {
+    // Cookies can be blocked in some browser privacy modes.
+  }
+}
+
+function validColorTheme(value) {
+  return COLOR_THEMES.some((theme) => theme.id === value) ? value : "studera";
+}
+
+function persistTheme(normalized, resolved, colorTheme, forcedLight) {
+  try {
+    localStorage.setItem(THEME_MODE_KEY, normalized);
+    localStorage.setItem(THEME_KEY, normalized);
+    localStorage.setItem(COLOR_THEME_KEY, colorTheme);
+  } catch {
+    // Local storage can be blocked in some browser privacy modes.
+  }
+  writeThemeCookie(THEME_CHOICE_COOKIE, normalized);
+  writeThemeCookie(COLOR_THEME_COOKIE, colorTheme);
+  if (!forcedLight) writeThemeCookie(THEME_RENDER_COOKIE, resolved);
+}
+
+function applyTheme(choice = storedThemeMode(), colorChoice = storedColorTheme()) {
+  const normalized = THEME_MODES.includes(choice) ? choice : "light";
+  const colorTheme = validColorTheme(colorChoice);
+  const forcedLight = shouldForceLightTheme();
+  const resolved = forcedLight ? "light" : resolveTheme(normalized);
   document.documentElement.dataset.themeChoice = normalized;
   document.documentElement.dataset.theme = resolved;
+  document.documentElement.dataset.colorTheme = colorTheme;
+  document.documentElement.style.colorScheme = resolved;
+  document.documentElement.style.backgroundColor = resolved === "dark" ? "#0E1622" : "#F8FAFC";
+  document.documentElement.style.color = resolved === "dark" ? "#E5EAF2" : "#1E293B";
+  persistTheme(normalized, resolved, colorTheme, forcedLight);
+  updateThemePreviewState(colorTheme);
+}
+
+function setAuthHint(user) {
   try {
-    localStorage.setItem(THEME_KEY, normalized);
+    if (user) localStorage.setItem(AUTH_HINT_KEY, "1");
+    else localStorage.removeItem(AUTH_HINT_KEY);
   } catch {
     // Local storage can be blocked in some browser privacy modes.
   }
@@ -118,7 +191,7 @@ function applyTheme(choice = storedTheme()) {
 function initTheme() {
   applyTheme();
   window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
-    if (storedTheme() === "system") applyTheme("system");
+    if (storedThemeMode() === "system") applyTheme("system", storedColorTheme());
   });
 }
 
@@ -171,6 +244,20 @@ function escapeHtml(value) {
 function compactText(value, max = 180) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+function avatarMarkup(path, className = "avatar") {
+  const safePath = String(path || "").trim();
+  return safePath
+    ? `<span class="${className} has-image" aria-hidden="true"><img src="${escapeHtml(safePath)}" alt="" /></span>`
+    : `<span class="${className}" aria-hidden="true"></span>`;
+}
+
+function setAvatarPreview(node, path) {
+  if (!node) return;
+  const safePath = String(path || "").trim();
+  node.classList.toggle("has-image", Boolean(safePath));
+  node.innerHTML = safePath ? `<img src="${escapeHtml(safePath)}" alt="" />` : "";
 }
 
 function renderLatex(source, displayMode = false) {
@@ -688,7 +775,8 @@ function openReportModal({ targetType, targetId }) {
 
 function updateAuthUI() {
   document.body.classList.toggle("is-authed", Boolean(state.user));
-  applyTheme(storedTheme());
+  setAuthHint(state.user);
+  applyTheme(storedThemeMode(), storedColorTheme());
   $(".brand")?.setAttribute("href", state.user?.is_site_admin ? "site-admin.html" : (state.user ? "feed.html" : "index.html"));
   renderNavLinks();
   $all("[data-auth-open]").forEach((button) => {
@@ -1062,9 +1150,16 @@ function renderSettings() {
   $("#settings-name").value = state.user.name || "";
   $("#settings-title").value = state.user.profile_title || "";
   $("#settings-bio").value = state.user.bio || "";
+  setAvatarPreview($("[data-settings-avatar-preview]"), state.user.avatar_path || "");
+  const removeAvatar = $("[data-remove-avatar]");
+  if (removeAvatar) removeAvatar.classList.toggle("hidden", !state.user.avatar_path);
+  const avatarInput = $("[data-avatar-input]");
+  if (avatarInput) avatarInput.value = "";
   setStaticSelectValue($("[data-settings-role]"), state.user.role || "student");
   setStaticSelectValue($("[data-settings-visibility]"), state.user.profile_visibility || "school");
-  setStaticSelectValue($("[data-theme-select]"), storedTheme());
+  renderThemeChoiceGrid();
+  setStaticSelectValue($("[data-theme-mode-select]"), storedThemeMode());
+  updateThemePreviewState(storedColorTheme());
   $("[name='show_school']", form).checked = Boolean(state.user.show_school);
   $("[name='show_email']", form).checked = Boolean(state.user.show_email);
   $("[name='email_replies']", form).checked = Boolean(state.user.email_replies);
@@ -1075,9 +1170,60 @@ function renderSettings() {
   $all("[data-section-save]", form).forEach((node) => node.classList.add("hidden"));
 }
 
+function updateThemePreviewState(activeTheme = storedColorTheme()) {
+  const selected = validColorTheme(activeTheme);
+  $all("[data-color-theme-option]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.colorThemeOption === selected);
+    button.setAttribute("aria-pressed", button.dataset.colorThemeOption === selected ? "true" : "false");
+  });
+}
+
+function renderThemeChoiceGrid() {
+  const grid = $("[data-color-theme-grid]");
+  if (!grid) return;
+  if (grid.dataset.rendered === "true") {
+    updateThemePreviewState(storedColorTheme());
+    return;
+  }
+  grid.innerHTML = COLOR_THEMES.map((theme) => `
+    <button class="theme-choice-card" type="button" data-color-theme-option="${theme.id}" aria-pressed="false">
+      <span class="theme-preview-window" aria-hidden="true">
+        <span class="theme-preview-bar" style="background:${theme.colors[1]}"></span>
+        <span class="theme-preview-body" style="background:${theme.colors[0]}">
+          <span class="theme-preview-line strong" style="background:${theme.colors[1]}"></span>
+          <span class="theme-preview-line" style="background:${theme.colors[3]}"></span>
+          <span class="theme-preview-line short" style="background:${theme.colors[2]}"></span>
+        </span>
+      </span>
+      <span class="theme-choice-name">${theme.label}</span>
+    </button>
+  `).join("");
+  grid.dataset.rendered = "true";
+  updateThemePreviewState(storedColorTheme());
+}
+
+function installAppearanceControls() {
+  if (document.body.dataset.page !== "settings") return;
+  renderThemeChoiceGrid();
+  setStaticSelectValue($("[data-theme-mode-select]"), storedThemeMode());
+  $("#settings-theme-mode")?.addEventListener("change", (event) => {
+    applyTheme(event.target.value, storedColorTheme());
+    toast("Theme mode updated.");
+  });
+  $("[data-color-theme-grid]")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-color-theme-option]");
+    if (!button) return;
+    applyTheme(storedThemeMode(), button.dataset.colorThemeOption);
+    toast(`${button.querySelector(".theme-choice-name")?.textContent || "Theme"} applied.`);
+  });
+}
+
 function installSettings() {
   const form = $("[data-settings-form]");
   if (!form) return;
+  let pendingAvatarData = "";
+  let pendingAvatarName = "";
+  let removeAvatar = false;
 
   function setSectionMessage(saveArea, message, type = "") {
     const node = $("[data-settings-message]", saveArea);
@@ -1097,9 +1243,32 @@ function installSettings() {
   form.addEventListener("input", (event) => showSectionSave(event.target));
   form.addEventListener("change", (event) => showSectionSave(event.target));
 
-  $("#settings-theme")?.addEventListener("change", (event) => {
-    applyTheme(event.target.value);
-    toast("Theme updated.");
+  $("[data-avatar-input]")?.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast("Choose an image file for your profile picture.");
+      event.target.value = "";
+      return;
+    }
+    const upload = await readUploadFile(file);
+    pendingAvatarData = upload.file_data;
+    pendingAvatarName = upload.file_name;
+    removeAvatar = false;
+    setAvatarPreview($("[data-settings-avatar-preview]"), pendingAvatarData);
+    $("[data-remove-avatar]")?.classList.remove("hidden");
+    showSectionSave(event.target);
+  });
+
+  $("[data-remove-avatar]")?.addEventListener("click", (event) => {
+    pendingAvatarData = "";
+    pendingAvatarName = "";
+    removeAvatar = true;
+    const input = $("[data-avatar-input]");
+    if (input) input.value = "";
+    setAvatarPreview($("[data-settings-avatar-preview]"), "");
+    event.currentTarget.classList.add("hidden");
+    showSectionSave(event.currentTarget);
   });
 
   $all("[data-save-settings]").forEach((button) => button.addEventListener("click", async (event) => {
@@ -1117,8 +1286,16 @@ function installSettings() {
         email_replies: $("[name='email_replies']", form).checked,
         email_digest: $("[name='email_digest']", form).checked,
       };
+      if (pendingAvatarData) {
+        data.avatar_file_data = pendingAvatarData;
+        data.avatar_file_name = pendingAvatarName;
+      }
+      if (removeAvatar) data.remove_avatar = true;
       const result = await api("/api/settings", { method: "POST", body: JSON.stringify(data) });
       state.user = result.user;
+      pendingAvatarData = "";
+      pendingAvatarName = "";
+      removeAvatar = false;
       updateAuthUI();
       renderSettings();
       if (saveArea) {
@@ -1982,6 +2159,31 @@ function renderEmptyThreads() {
   `;
 }
 
+function supportCountFromText(value) {
+  const match = String(value || "").match(/-?\d+/);
+  return match ? Number(match[0]) : 0;
+}
+
+function updateThreadSupportButton(button, active) {
+  if (!button) return;
+  const current = supportCountFromText(button.textContent);
+  const wasActive = button.classList.contains("active");
+  const next = Math.max(0, current + (active && !wasActive ? 1 : !active && wasActive ? -1 : 0));
+  button.classList.toggle("active", active);
+  button.textContent = `Support ${next}`;
+}
+
+function updateReplySupportButton(button, active) {
+  if (!button) return;
+  const row = button.closest(".response-row");
+  const countNode = row?.querySelector(".vote strong");
+  const current = supportCountFromText(countNode?.textContent);
+  const wasActive = button.classList.contains("active");
+  const next = Math.max(0, current + (active && !wasActive ? 1 : !active && wasActive ? -1 : 0));
+  button.classList.toggle("active", active);
+  if (countNode) countNode.textContent = String(next);
+}
+
 function threadCard(thread) {
   const canDelete = state.user && (state.user.id === thread.author_id || state.user.is_school_admin);
   return `
@@ -2100,7 +2302,17 @@ function installFeed() {
       return;
     }
     try {
-      if (support) await api(`/api/threads/${support.dataset.supportThread}/support`, { method: "POST", body: "{}" });
+      if (support) {
+        const result = await api(`/api/threads/${support.dataset.supportThread}/support`, { method: "POST", body: "{}" });
+        updateThreadSupportButton(support, Boolean(result.active));
+        const thread = state.threads.find((item) => String(item.id) === String(support.dataset.supportThread));
+        if (thread) {
+          const wasActive = Boolean(thread.supported);
+          thread.supported = Boolean(result.active);
+          thread.supports = Math.max(0, Number(thread.supports || 0) + (result.active && !wasActive ? 1 : !result.active && wasActive ? -1 : 0));
+        }
+        return;
+      }
       if (bookmark) await api(`/api/threads/${bookmark.dataset.bookmarkThread}/bookmark`, { method: "POST", body: "{}" });
       if (del) {
         if (!confirm("Delete this thread and all of its replies?")) return;
@@ -2244,11 +2456,26 @@ function renderUploadsPanel(thread, replies) {
   `;
 }
 
+function solutionCallout(answer) {
+  if (!answer) return "";
+  return `
+    <aside class="solution-callout">
+      <div>
+        <span class="eyebrow">Solution</span>
+        <h2>Accepted response by ${escapeHtml(answer.author_name)}</h2>
+        <p>${escapeHtml(compactText(answer.body, 220))}</p>
+      </div>
+      <a class="button secondary" href="#reply-${answer.id}">View Solution</a>
+    </aside>
+  `;
+}
+
 function renderThreadDetail(thread, replies) {
   const view = $("[data-thread-view]");
   const canDelete = state.user && (state.user.id === thread.author_id || state.user.is_school_admin);
   const canManage = canManageThread(thread);
   const locked = ["locked", "archived"].includes(thread.status);
+  const acceptedReply = replies.find((reply) => Number(reply.id) === Number(thread.answered_reply_id));
   view.innerHTML = `
     <div class="thread-tabs" data-thread-tabs>
       <button class="active" data-thread-tab="discussion" type="button">Thread</button>
@@ -2257,7 +2484,7 @@ function renderThreadDetail(thread, replies) {
     <section data-thread-panel="discussion">
       <article class="thread-detail">
         <header class="article-head">
-          <span class="avatar" aria-hidden="true"></span>
+          ${avatarMarkup(thread.author_avatar_path, "avatar")}
           <div>
             <h1>${escapeHtml(thread.title)}</h1>
             <div class="meta-row">
@@ -2289,6 +2516,7 @@ function renderThreadDetail(thread, replies) {
             `).join("")}
           </div>
         ` : ""}
+        ${solutionCallout(acceptedReply)}
       </article>
       <header class="responses-head"><h2>Scholarly Responses</h2></header>
       <section class="content-stack" data-reply-list>
@@ -2305,6 +2533,7 @@ function renderThreadDetail(thread, replies) {
 function replyCard(reply, thread = {}) {
   const canDelete = state.user && (state.user.id === reply.author_id || state.user.is_school_admin);
   const featured = ["teacher", "staff"].includes(reply.author_role) ? " featured" : "";
+  const accepted = Number(reply.id) === Number(thread.answered_reply_id);
   const canMarkAnswer = Boolean(state.user && state.user.id === thread.author_id && !["locked", "archived"].includes(thread.status));
   const replyPreview = compactText(reply.body, 150);
   return `
@@ -2314,11 +2543,12 @@ function replyCard(reply, thread = {}) {
         <strong>${reply.supports}</strong>
         <span></span>
       </div>
-      <section class="reply-card${featured}">
+      <section class="reply-card${featured}${accepted ? " solution" : ""}">
         <div class="reply-top">
-          <span class="small-avatar" aria-hidden="true"></span>
+          ${avatarMarkup(reply.author_avatar_path, "small-avatar")}
           <a class="profile-link" href="${profileHref(reply.author_id)}">${escapeHtml(reply.author_name)}</a>
           ${roleBadge(reply.author_role)}
+          ${accepted ? `<span class="badge solution-badge">Solution</span>` : ""}
           <span class="meta">${escapeHtml(reply.created_at)}</span>
         </div>
         ${reply.reply_to ? `
@@ -2444,7 +2674,11 @@ function installThread() {
         $("[data-reply-target]", form)?.classList.add("hidden");
         return;
       }
-      if (support) await api(`/api/threads/${support.dataset.detailSupport}/support`, { method: "POST", body: "{}" });
+      if (support) {
+        const result = await api(`/api/threads/${support.dataset.detailSupport}/support`, { method: "POST", body: "{}" });
+        updateThreadSupportButton(support, Boolean(result.active));
+        return;
+      }
       if (bookmark) await api(`/api/threads/${bookmark.dataset.detailBookmark}/bookmark`, { method: "POST", body: "{}" });
       if (del) await api(`/api/replies/${del.dataset.deleteReply}`, { method: "DELETE" });
       if (threadEdit) {
@@ -2487,7 +2721,11 @@ function installThread() {
         location.href = "feed.html";
         return;
       }
-      if (replySupport) await api(`/api/replies/${replySupport.dataset.supportReply}/support`, { method: "POST", body: "{}" });
+      if (replySupport) {
+        const result = await api(`/api/replies/${replySupport.dataset.supportReply}/support`, { method: "POST", body: "{}" });
+        updateReplySupportButton(replySupport, Boolean(result.active));
+        return;
+      }
       if (report) {
         openReportModal({
           targetType: report.dataset.reportContent,
@@ -2535,7 +2773,7 @@ async function renderProfile() {
     const profile = data.profile;
     root.innerHTML = `
       <section class="profile-hero">
-        <span class="avatar large" aria-hidden="true"></span>
+        ${avatarMarkup(profile.avatar_path, "avatar large")}
         <div>
           <p class="eyebrow">${escapeHtml(profile.role || "Member")}</p>
           <h1>${escapeHtml(profile.name)}</h1>
@@ -2629,6 +2867,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   installInstitutionAutocomplete();
   installFileInputs();
   installAuthForms();
+  installAppearanceControls();
   installSettings();
   installAdmin();
   installSiteAdmin();
