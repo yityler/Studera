@@ -91,13 +91,13 @@ const COLOR_THEME_COOKIE = "studera_color_theme";
 const AUTH_HINT_KEY = "studera-authenticated";
 const THEME_MODES = ["light", "dark", "system"];
 const COLOR_THEMES = [
-  { id: "studera", label: "Studera", colors: ["#F8FAFC", "#1A365D", "#8A5A14", "#E2E8F0"] },
+  { id: "studera", label: "Studera", colors: ["#F8FAFC", "#1A365D", "#8A5A14", "#E2E8F0"], darkColors: ["#0E1622", "#233D66", "#D5A455", "#2A3A4F"] },
   { id: "github", label: "GitHub", colors: ["#F6F8FA", "#1F6FEB", "#9A6700", "#D0D7DE"], darkColors: ["#0D1117", "#1F6FEB", "#D29922", "#303A46"] },
   { id: "ayu", label: "Ayu", colors: ["#FAFAFA", "#399EE6", "#FF9940", "#DFE3E6"], darkColors: ["#0B0E14", "#39BAE6", "#FFD580", "#263242"] },
   { id: "monokai-pro", label: "Monokai Pro", colors: ["#FFFDF7", "#FF6188", "#78DCE8", "#DED8CD"], darkColors: ["#221F22", "#FC9867", "#78DCE8", "#4A4650"] },
   { id: "min", label: "Min Theme", colors: ["#FFFFFF", "#1F2937", "#006EDB", "#E5E7EB"], darkColors: ["#101318", "#E7E9EE", "#A7C7FF", "#303A46"] },
   { id: "everforest", label: "Everforest", colors: ["#FDF6E3", "#8DA101", "#DFA000", "#E0D6BA"], darkColors: ["#1E2326", "#A7C080", "#DBBC7F", "#45504D"] },
-  { id: "amethyst", label: "Amethyst", colors: ["#FBF8FF", "#7C3AED", "#B892FF", "#E8DDF8"] },
+  { id: "amethyst", label: "Amethyst", colors: ["#FBF8FF", "#7C3AED", "#B892FF", "#E8DDF8"], darkColors: ["#15121F", "#B892FF", "#FFD166", "#3A3152"] },
   { id: "better-solarized", label: "Better Solarized", colors: ["#FDF6E3", "#268BD2", "#B58900", "#D8CFB5"], darkColors: ["#002B36", "#2AA198", "#D6A600", "#1D5662"] },
 ];
 
