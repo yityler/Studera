@@ -92,13 +92,13 @@ const AUTH_HINT_KEY = "studera-authenticated";
 const THEME_MODES = ["light", "dark", "system"];
 const COLOR_THEMES = [
   { id: "studera", label: "Studera", colors: ["#F8FAFC", "#1A365D", "#8A5A14", "#E2E8F0"] },
-  { id: "github", label: "GitHub", colors: ["#F6F8FA", "#0969DA", "#1F883D", "#D0D7DE"] },
-  { id: "ayu", label: "Ayu", colors: ["#FAFAFA", "#FF9940", "#55B4D4", "#E6E1CF"] },
-  { id: "monokai-pro", label: "Monokai Pro", colors: ["#FFFDF7", "#FF6188", "#78DCE8", "#FFD866"] },
-  { id: "min", label: "Min Theme", colors: ["#FFFFFF", "#006EDB", "#6B7280", "#E5E7EB"] },
-  { id: "everforest", label: "Everforest", colors: ["#FDF6E3", "#8DA101", "#DFA000", "#E6E2CC"] },
+  { id: "github", label: "GitHub", colors: ["#F6F8FA", "#1F6FEB", "#9A6700", "#D0D7DE"], darkColors: ["#0D1117", "#1F6FEB", "#D29922", "#303A46"] },
+  { id: "ayu", label: "Ayu", colors: ["#FAFAFA", "#399EE6", "#FF9940", "#DFE3E6"], darkColors: ["#0B0E14", "#39BAE6", "#FFD580", "#263242"] },
+  { id: "monokai-pro", label: "Monokai Pro", colors: ["#FFFDF7", "#FF6188", "#78DCE8", "#DED8CD"], darkColors: ["#221F22", "#FC9867", "#78DCE8", "#4A4650"] },
+  { id: "min", label: "Min Theme", colors: ["#FFFFFF", "#1F2937", "#006EDB", "#E5E7EB"], darkColors: ["#101318", "#E7E9EE", "#A7C7FF", "#303A46"] },
+  { id: "everforest", label: "Everforest", colors: ["#FDF6E3", "#8DA101", "#DFA000", "#E0D6BA"], darkColors: ["#1E2326", "#A7C080", "#DBBC7F", "#45504D"] },
   { id: "amethyst", label: "Amethyst", colors: ["#FBF8FF", "#7C3AED", "#B892FF", "#E8DDF8"] },
-  { id: "better-solarized", label: "Better Solarized", colors: ["#FDF6E3", "#268BD2", "#B58900", "#EEE8D5"] },
+  { id: "better-solarized", label: "Better Solarized", colors: ["#FDF6E3", "#268BD2", "#B58900", "#D8CFB5"], darkColors: ["#002B36", "#2AA198", "#D6A600", "#1D5662"] },
 ];
 
 function storedThemeMode() {
@@ -176,7 +176,7 @@ function applyTheme(choice = storedThemeMode(), colorChoice = storedColorTheme()
   document.documentElement.style.backgroundColor = resolved === "dark" ? "#0E1622" : "#F8FAFC";
   document.documentElement.style.color = resolved === "dark" ? "#E5EAF2" : "#1E293B";
   persistTheme(normalized, resolved, colorTheme, forcedLight);
-  updateThemePreviewState(colorTheme);
+  renderThemeChoiceGrid();
 }
 
 function setAuthHint(user) {
@@ -249,7 +249,7 @@ function compactText(value, max = 180) {
 function avatarMarkup(path, className = "avatar") {
   const safePath = String(path || "").trim();
   return safePath
-    ? `<span class="${className} has-image" aria-hidden="true"><img src="${escapeHtml(safePath)}" alt="" /></span>`
+    ? `<span class="${className} has-image" aria-hidden="true"><img src="${escapeHtml(safePath)}" srcset="${escapeHtml(safePath)} 1x, ${escapeHtml(safePath)} 2x" alt="" decoding="async" /></span>`
     : `<span class="${className}" aria-hidden="true"></span>`;
 }
 
@@ -257,7 +257,7 @@ function setAvatarPreview(node, path) {
   if (!node) return;
   const safePath = String(path || "").trim();
   node.classList.toggle("has-image", Boolean(safePath));
-  node.innerHTML = safePath ? `<img src="${escapeHtml(safePath)}" alt="" />` : "";
+  node.innerHTML = safePath ? `<img src="${escapeHtml(safePath)}" srcset="${escapeHtml(safePath)} 1x, ${escapeHtml(safePath)} 2x" alt="" decoding="async" />` : "";
 }
 
 function renderLatex(source, displayMode = false) {
@@ -1178,27 +1178,36 @@ function updateThemePreviewState(activeTheme = storedColorTheme()) {
   });
 }
 
+function previewColorsForTheme(theme, mode = document.documentElement.dataset.theme || "light") {
+  return mode === "dark" && theme.darkColors ? theme.darkColors : theme.colors;
+}
+
 function renderThemeChoiceGrid() {
   const grid = $("[data-color-theme-grid]");
   if (!grid) return;
-  if (grid.dataset.rendered === "true") {
+  const previewMode = document.documentElement.dataset.theme || resolveTheme(storedThemeMode());
+  if (grid.dataset.rendered === "true" && grid.dataset.previewMode === previewMode) {
     updateThemePreviewState(storedColorTheme());
     return;
   }
-  grid.innerHTML = COLOR_THEMES.map((theme) => `
-    <button class="theme-choice-card" type="button" data-color-theme-option="${theme.id}" aria-pressed="false">
-      <span class="theme-preview-window" aria-hidden="true">
-        <span class="theme-preview-bar" style="background:${theme.colors[1]}"></span>
-        <span class="theme-preview-body" style="background:${theme.colors[0]}">
-          <span class="theme-preview-line strong" style="background:${theme.colors[1]}"></span>
-          <span class="theme-preview-line" style="background:${theme.colors[3]}"></span>
-          <span class="theme-preview-line short" style="background:${theme.colors[2]}"></span>
+  grid.innerHTML = COLOR_THEMES.map((theme) => {
+    const colors = previewColorsForTheme(theme, previewMode);
+    return `
+      <button class="theme-choice-card" type="button" data-color-theme-option="${theme.id}" aria-pressed="false">
+        <span class="theme-preview-window" aria-hidden="true" style="border-color:${colors[3]}">
+          <span class="theme-preview-bar" style="background:${colors[1]}"></span>
+          <span class="theme-preview-body" style="background:${colors[0]}">
+            <span class="theme-preview-line strong" style="background:${colors[1]}"></span>
+            <span class="theme-preview-line" style="background:${colors[3]}"></span>
+            <span class="theme-preview-line short" style="background:${colors[2]}"></span>
+          </span>
         </span>
-      </span>
-      <span class="theme-choice-name">${theme.label}</span>
-    </button>
-  `).join("");
+        <span class="theme-choice-name">${theme.label}</span>
+      </button>
+    `;
+  }).join("");
   grid.dataset.rendered = "true";
+  grid.dataset.previewMode = previewMode;
   updateThemePreviewState(storedColorTheme());
 }
 
