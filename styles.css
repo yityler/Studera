@@ -3017,18 +3017,9 @@ html[data-theme="dark"] .filter-toggle input {
   .search-bar-expanded,
   .inline-admin-form { grid-template-columns: 1fr; }
   .field.wide { grid-column: auto; }
-  .response-row {
-    grid-template-columns: 1fr;
-  }
   .solution-callout {
     align-items: stretch;
     flex-direction: column;
-  }
-  .vote {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    padding-top: 0;
   }
   .page-title { display: block; }
   .new-thread-button {
