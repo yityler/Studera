@@ -773,6 +773,48 @@ function openReportModal({ targetType, targetId }) {
   });
 }
 
+function openCommunityGuidelinesModal() {
+  closeModal();
+  const schoolName = state.school?.institution || state.user?.institution || "";
+  const guidelines = String(state.school?.guidelines || "").trim();
+  const title = schoolName ? `${schoolName} Community Guidelines` : "Community Guidelines";
+  const body = guidelines
+    ? renderRichText(guidelines)
+    : `<p class="modal-copy">${escapeHtml(
+        state.user
+          ? "Your school has not published custom community guidelines yet."
+          : "Sign in to view the community guidelines set by your school."
+      )}</p>`;
+  const root = document.createElement("div");
+  root.className = "modal-backdrop";
+  root.dataset.modalRoot = "true";
+  root.innerHTML = `
+    <section class="studera-modal guidelines-modal" role="dialog" aria-modal="true" aria-labelledby="guidelines-title">
+      <div class="modal-static">
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">School Policy</p>
+            <h2 id="guidelines-title">${escapeHtml(title)}</h2>
+          </div>
+          <button class="modal-close" type="button" data-modal-close aria-label="Close">×</button>
+        </div>
+        <div class="guidelines-body">
+          ${body}
+        </div>
+        <div class="modal-actions">
+          <button class="button" type="button" data-modal-close>Close</button>
+        </div>
+      </div>
+    </section>
+  `;
+  document.body.appendChild(root);
+  document.body.classList.add("modal-open");
+  root.addEventListener("click", (event) => {
+    if (event.target === root || event.target.closest("[data-modal-close]")) closeModal();
+  });
+  requestAnimationFrame(() => $("[data-modal-close]", root)?.focus({ preventScroll: true }));
+}
+
 function updateAuthUI() {
   document.body.classList.toggle("is-authed", Boolean(state.user));
   setAuthHint(state.user);
@@ -917,6 +959,15 @@ function installNav() {
       toast("Signed out.");
       location.href = "index.html";
     });
+  });
+}
+
+function installFooterGuidelines() {
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest("[data-community-guidelines]");
+    if (!link) return;
+    event.preventDefault();
+    openCommunityGuidelinesModal();
   });
 }
 
@@ -2872,6 +2923,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   installNavShadow();
   installContentMotion();
   installNav();
+  installFooterGuidelines();
   installCustomSelects();
   installInstitutionAutocomplete();
   installFileInputs();

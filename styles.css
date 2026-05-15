@@ -2592,6 +2592,14 @@ html[data-theme="dark"] .site-nav.open .nav-actions {
   padding: 28px;
 }
 
+.modal-static {
+  display: grid;
+  gap: 18px;
+  max-height: inherit;
+  overflow-y: auto;
+  padding: 28px;
+}
+
 .modal-head {
   display: flex;
   align-items: start;
@@ -2608,6 +2616,20 @@ html[data-theme="dark"] .site-nav.open .nav-actions {
   color: var(--muted);
   font-size: 1rem;
   line-height: 1.6;
+}
+
+.guidelines-body {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 18px;
+  color: var(--ink);
+}
+
+.guidelines-body .rich-text {
+  line-height: 1.7;
 }
 
 .modal-close {
@@ -3039,7 +3061,8 @@ html[data-theme="dark"] .filter-toggle input {
     padding: 14px;
   }
 
-  .studera-modal form {
+  .studera-modal form,
+  .modal-static {
     max-height: 92dvh;
     padding: 22px;
   }
