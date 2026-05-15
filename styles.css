@@ -1962,6 +1962,8 @@ html[data-theme="dark"] .text-action.danger:hover {
 
 .avatar,
 .small-avatar {
+  display: block;
+  flex: 0 0 auto;
   border-radius: 5px;
   background:
     radial-gradient(circle at 50% 34%, #20242B 0 9px, transparent 10px),
@@ -2541,7 +2543,7 @@ html[data-theme="dark"] .site-nav.open .nav-actions {
 
 .profile-hero {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 20px;
   align-items: start;
   border: 1px solid var(--border);
@@ -2556,6 +2558,7 @@ html[data-theme="dark"] .site-nav.open .nav-actions {
 }
 
 .profile-hero h1 {
+  overflow-wrap: anywhere;
   font-size: clamp(2.4rem, 5vw, 4rem);
 }
 
@@ -3102,6 +3105,9 @@ html[data-theme="dark"] .filter-toggle input {
   .solution-callout {
     align-items: stretch;
     flex-direction: column;
+  }
+  .profile-hero {
+    grid-template-columns: 1fr;
   }
   .page-title { display: block; }
   .new-thread-button {
