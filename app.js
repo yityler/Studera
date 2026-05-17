@@ -82,6 +82,7 @@ const SECTIONS_BY_CURRICULUM = {
 };
 
 const customSectionsByCurriculum = {};
+const SECTION_CHOICE_SEPARATOR = "|||";
 const THEME_KEY = "studera-theme";
 const THEME_MODE_KEY = "studera-theme-mode";
 const COLOR_THEME_KEY = "studera-color-theme";
@@ -355,6 +356,13 @@ function readUploadFile(file) {
 
 async function formPayload(form) {
   const data = Object.fromEntries(new FormData(form));
+  if (form.matches("[data-thread-form]")) {
+    const choice = decodeSectionChoice(data.section);
+    if (choice.curriculum && choice.section) {
+      data.curriculum = choice.curriculum;
+      data.section = choice.section;
+    }
+  }
   delete data.image_file;
   delete data.file_upload;
   const fileInput = $("[data-file-input], [data-image-input]", form);
@@ -1937,7 +1945,13 @@ function installCustomSelects() {
       option.addEventListener("click", () => {
         if (option.disabled) return;
         input.value = option.dataset.value;
-        button.textContent = option.textContent;
+        input.dataset.curriculum = option.dataset.curriculum || "";
+        button.textContent = option.dataset.label || option.textContent.trim();
+        if (wrapper.matches("[data-section-select]")) {
+          const choice = decodeSectionChoice(option.dataset.value);
+          const curriculumInput = $("#thread-curriculum");
+          if (curriculumInput && choice.curriculum) curriculumInput.value = choice.curriculum;
+        }
         options.forEach((item) => item.classList.toggle("active", item === option));
         wrapper.classList.remove("open");
         input.dispatchEvent(new Event("change", { bubbles: true }));
@@ -1973,7 +1987,13 @@ function setStaticSelectValue(wrapper, value) {
   const target = options.find((option) => option.dataset.value === value) || options.find((option) => !option.disabled);
   if (!input || !button || !target) return;
   input.value = target.dataset.value;
-  button.textContent = target.textContent;
+  input.dataset.curriculum = target.dataset.curriculum || "";
+  button.textContent = target.dataset.label || target.textContent.trim();
+  if (wrapper.matches("[data-section-select]")) {
+    const choice = decodeSectionChoice(target.dataset.value);
+    const curriculumInput = $("#thread-curriculum");
+    if (curriculumInput && choice.curriculum) curriculumInput.value = choice.curriculum;
+  }
   options.forEach((item) => item.classList.toggle("active", item === target));
 }
 
@@ -1988,6 +2008,52 @@ function setCustomSections(customCurricula) {
 
 function sectionsForCurriculum(curriculum) {
   return customSectionsByCurriculum[curriculum] || SECTIONS_BY_CURRICULUM[curriculum] || [];
+}
+
+function encodeSectionChoice(curriculum, section) {
+  return `${curriculum}${SECTION_CHOICE_SEPARATOR}${section}`;
+}
+
+function decodeSectionChoice(value) {
+  const text = String(value || "");
+  if (!text.includes(SECTION_CHOICE_SEPARATOR)) return { curriculum: "", section: text };
+  const [curriculum, ...sectionParts] = text.split(SECTION_CHOICE_SEPARATOR);
+  return { curriculum, section: sectionParts.join(SECTION_CHOICE_SEPARATOR) };
+}
+
+function composerCurriculaForSections() {
+  const allowed = allowedCurricula();
+  if (state.filter && allowed.includes(state.filter)) return [state.filter];
+  return allowed;
+}
+
+function composerSectionChoices() {
+  const curricula = composerCurriculaForSections();
+  const rawChoices = [];
+  const sectionCounts = new Map();
+
+  curricula.forEach((curriculum) => {
+    sectionsForCurriculum(curriculum).forEach((section) => {
+      if (!section) return;
+      rawChoices.push({ curriculum, section });
+      sectionCounts.set(section, (sectionCounts.get(section) || 0) + 1);
+    });
+  });
+
+  const seen = new Set();
+  return rawChoices.filter((choice) => {
+    const key = encodeSectionChoice(choice.curriculum, choice.section);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map((choice) => {
+    const needsCurriculumLabel = curricula.length > 1 && sectionCounts.get(choice.section) > 1;
+    return {
+      ...choice,
+      label: needsCurriculumLabel ? `${choice.section} · ${choice.curriculum}` : choice.section,
+      value: encodeSectionChoice(choice.curriculum, choice.section),
+    };
+  });
 }
 
 function uniqueSectionsForAllowedCurricula() {
@@ -2016,15 +2082,22 @@ function updateClassFilterOptions() {
   setStaticSelectValue(wrapper, sections.includes(current) ? current : "");
 }
 
-function updateSectionOptions(curriculum) {
+function updateSectionOptions() {
   const wrapper = $("[data-section-select]");
   const menu = $("[data-section-menu]");
   if (!wrapper || !menu) return;
-  const sections = sectionsForCurriculum(curriculum);
-  menu.innerHTML = sections.map((section, index) => (
-    `<button class="custom-option ${index === 0 ? "active" : ""}" type="button" data-value="${escapeHtml(section)}">${escapeHtml(section)}</button>`
+  const input = $("#thread-section");
+  const current = input?.value || "";
+  const currentDecoded = decodeSectionChoice(current);
+  const choices = composerSectionChoices();
+  const selectedValue = choices.some((choice) => choice.value === current)
+    ? current
+    : choices.find((choice) => choice.section === currentDecoded.section)?.value || choices[0]?.value || "";
+
+  menu.innerHTML = choices.map((choice, index) => (
+    `<button class="custom-option ${choice.value === selectedValue || (!selectedValue && index === 0) ? "active" : ""}" type="button" data-value="${escapeHtml(choice.value)}" data-curriculum="${escapeHtml(choice.curriculum)}" data-label="${escapeHtml(choice.label)}">${escapeHtml(choice.label)}</button>`
   )).join("");
-  setStaticSelectValue(wrapper, sections[0] || "");
+  setStaticSelectValue(wrapper, selectedValue);
   installCustomSelects();
 }
 
@@ -2043,7 +2116,7 @@ function syncComposerCurriculum() {
   if (!input) return;
   const curriculum = composerCurriculum();
   input.value = curriculum;
-  updateSectionOptions(curriculum);
+  updateSectionOptions();
 }
 
 function renderCurriculumFilters(allowedList) {
