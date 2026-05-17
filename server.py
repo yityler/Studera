@@ -1367,6 +1367,22 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def send_icon_file(self, relative_path, content_type="image/png"):
+        path = os.path.join(ROOT, relative_path)
+        if not os.path.isfile(path):
+            return False
+        try:
+            with open(path, "rb") as handle:
+                body = handle.read()
+        except OSError:
+            return False
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+        return True
+
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -1506,6 +1522,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == "/favicon.ico":
+            return self.send_icon_file("assets/studera-wordmark-favicon-32.png")
+        if parsed.path == "/apple-touch-icon.png":
+            return self.send_icon_file("assets/studera-wordmark-apple-touch-icon.png")
         if parsed.path == "/api/session":
             user = self.current_user()
             school = None

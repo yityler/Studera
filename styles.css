@@ -572,6 +572,17 @@ form:not(.search-bar) > .button {
   width: min(760px, 54vw);
 }
 
+.home-wordmark {
+  display: inline-block;
+  margin-bottom: 28px;
+  color: var(--navy);
+  font-family: var(--serif);
+  font-size: clamp(2.4rem, 4.4vw, 4rem);
+  font-style: italic;
+  font-weight: 600;
+  line-height: 1;
+}
+
 .hero h1 {
   max-width: 680px;
   color: #062A57;
