@@ -677,6 +677,12 @@ form:not(.search-bar) > .button {
 .auth-side h2,
 .auth-card h2 { font-size: 2rem; }
 
+.auth-side form {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+}
+
 .auth-card .lead,
 .page-title .lead,
 .panel p {
