@@ -2657,7 +2657,7 @@ function renderThreadDetail(thread, replies) {
         ` : ""}
         ${solutionCallout(acceptedReply)}
       </article>
-      <header class="responses-head"><h2>Scholarly Responses</h2></header>
+      <header class="responses-head"><h2>Responses</h2></header>
       <section class="content-stack" data-reply-list>
         ${replies.length ? replies.map((reply) => replyCard(reply, thread)).join("") : `<section class="empty-state"><div><div class="empty-mark">□</div><h2>No responses yet</h2><p>Be the first to contribute a reply.</p></div></section>`}
       </section>
