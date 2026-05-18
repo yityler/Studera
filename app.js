@@ -886,12 +886,18 @@ function updateFeedHeader() {
   if (state.bookmarkedOnly) {
     if (eyebrow) eyebrow.textContent = "Saved Archive";
     if (title) title.textContent = "Bookmarked";
-    if (lead) lead.textContent = "Review threads you saved or authored.";
+    if (lead) {
+      lead.textContent = "Review threads you saved or authored.";
+      lead.classList.remove("hidden");
+    }
     return;
   }
   if (eyebrow) eyebrow.textContent = "Community Archive";
   if (title) title.textContent = "Discussion Feed";
-  if (lead) lead.textContent = "Search curriculum-aligned questions and create the first thread for your institution.";
+  if (lead) {
+    lead.textContent = "";
+    lead.classList.add("hidden");
+  }
 }
 
 function updateNavState() {
