@@ -678,6 +678,60 @@ function openDangerConfirmModal({ title, eyebrow = "Danger", message, confirmLab
   });
 }
 
+function openNameEditModal({ name, email, onSubmit }) {
+  closeModal();
+  const root = document.createElement("div");
+  root.className = "modal-backdrop";
+  root.dataset.modalRoot = "true";
+  root.innerHTML = `
+    <section class="studera-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <form data-modal-form>
+        <div class="modal-head">
+          <div>
+            <p class="eyebrow">Member Profile</p>
+            <h2 id="modal-title">Edit member name</h2>
+          </div>
+          <button class="modal-close" type="button" data-modal-close aria-label="Close">×</button>
+        </div>
+        <p class="modal-copy">${escapeHtml(email)}</p>
+        <div class="field">
+          <label for="modal-member-name">Display Name</label>
+          <input id="modal-member-name" name="name" value="${escapeHtml(name)}" required />
+        </div>
+        <p class="form-message" data-modal-message></p>
+        <div class="modal-actions">
+          <button class="button secondary" type="button" data-modal-close>Cancel</button>
+          <button class="button" type="submit">Save Name</button>
+        </div>
+      </form>
+    </section>
+  `;
+  document.body.appendChild(root);
+  document.body.classList.add("modal-open");
+  requestAnimationFrame(() => {
+    const input = $("#modal-member-name", root);
+    input?.focus({ preventScroll: true });
+    input?.setSelectionRange(input.value.length, input.value.length);
+  });
+  root.addEventListener("click", (event) => {
+    if (event.target === root || event.target.closest("[data-modal-close]")) closeModal();
+  });
+  root.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submit = $("button[type='submit']", root);
+    const form = event.target.closest("form");
+    if (!form) return;
+    submit.disabled = true;
+    try {
+      await onSubmit(Object.fromEntries(new FormData(form)));
+      closeModal();
+    } catch (error) {
+      setMessage("[data-modal-message]", error.message, "error");
+      submit.disabled = false;
+    }
+  });
+}
+
 function openReportModal({ targetType, targetId }) {
   closeModal();
   const root = document.createElement("div");
@@ -1472,6 +1526,7 @@ async function renderAdmin() {
           </div>
           <div class="admin-row-actions">
             ${member.is_school_admin ? `<span class="badge teacher">Admin</span>` : `<span class="badge student">Member</span>`}
+            <button class="text-action" type="button" data-admin-edit-name="${escapeHtml(member.email)}" data-admin-edit-current-name="${escapeHtml(member.name)}">Edit Name</button>
             ${member.is_school_admin && member.email !== state.user.email ? `<button class="text-action danger" type="button" data-admin-revoke="${escapeHtml(member.email)}">Revoke Admin</button>` : ""}
             ${member.email !== state.user.email ? `<button class="text-action danger" type="button" data-admin-delete-member="${escapeHtml(member.email)}" data-admin-delete-name="${escapeHtml(member.name)}">Delete Account</button>` : ""}
           </div>
@@ -1617,6 +1672,7 @@ function installAdmin() {
     const exportButton = event.target.closest("[data-admin-export]");
     const revokeAdmin = event.target.closest("[data-admin-revoke]");
     const deleteMember = event.target.closest("[data-admin-delete-member]");
+    const editName = event.target.closest("[data-admin-edit-name]");
     const removeCustom = event.target.closest("[data-remove-custom-curriculum]");
     if (removeCustom) {
       const row = removeCustom.closest("[data-custom-curriculum-row]");
@@ -1635,6 +1691,23 @@ function installAdmin() {
       } catch (error) {
         toast(error.message);
       }
+      return;
+    }
+    if (editName) {
+      const email = editName.dataset.adminEditName;
+      openNameEditModal({
+        name: editName.dataset.adminEditCurrentName || "",
+        email,
+        onSubmit: async (data) => {
+          await api("/api/admin/members/name", {
+            method: "POST",
+            body: JSON.stringify({ email, name: data.name }),
+          });
+          toast("Member name updated.");
+          if (email === state.user?.email) await loadSession();
+          else await renderAdmin();
+        },
+      });
       return;
     }
     if (deleteMember) {

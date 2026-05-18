@@ -1700,6 +1700,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self.grant_admin()
         if parsed.path == "/api/admin/revoke":
             return self.revoke_admin()
+        if parsed.path == "/api/admin/members/name":
+            return self.rename_school_member()
         if parsed.path == "/api/admin/members/delete":
             return self.delete_school_member()
         if parsed.path == "/api/admin/reports/status":
@@ -2764,6 +2766,37 @@ class Handler(SimpleHTTPRequestHandler):
             conn.execute("UPDATE users SET is_school_admin = 0 WHERE id = ?", (target["id"],))
             log_audit(conn, user, "revoke_school_admin", "user", target["id"], user["institution"], {"email": email})
         return self.send_json({"ok": True})
+
+    def rename_school_member(self):
+        user = self.require_school_admin()
+        if not user:
+            return
+        data = self.read_json()
+        email = str(data.get("email", "")).strip().lower()
+        name = " ".join(str(data.get("name", "")).strip().split())
+        if not email:
+            return self.send_json({"error": "Choose a member account to rename."}, HTTPStatus.BAD_REQUEST)
+        if len(name) < 2:
+            return self.send_json({"error": "Enter a display name with at least 2 characters."}, HTTPStatus.BAD_REQUEST)
+        if len(name) > 80:
+            return self.send_json({"error": "Display names must be 80 characters or fewer."}, HTTPStatus.BAD_REQUEST)
+        with db() as conn:
+            target = conn.execute("SELECT * FROM users WHERE email = ? AND is_site_admin = 0", (email,)).fetchone()
+            if not target:
+                return self.send_json({"error": "No school account found for that email."}, HTTPStatus.NOT_FOUND)
+            target_user = public_user(target)
+            if not same_school(user, target_user):
+                return self.send_json({"error": "Admins can only rename accounts within their own school."}, HTTPStatus.FORBIDDEN)
+            old_name = safe_row_value(target, "name", "")
+            if old_name == name:
+                return self.send_json({"ok": True, "name": name})
+            conn.execute("UPDATE users SET name = ? WHERE id = ?", (name, target["id"]))
+            log_audit(conn, user, "rename_member", "user", target["id"], user["institution"], {
+                "email": email,
+                "old_name": old_name,
+                "new_name": name,
+            })
+        return self.send_json({"ok": True, "name": name})
 
     def delete_school_member(self):
         user = self.require_school_admin()
