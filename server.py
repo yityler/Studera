@@ -1378,7 +1378,7 @@ class Handler(SimpleHTTPRequestHandler):
             return False
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
-        self.send_header("Cache-Control", "public, max-age=3600")
+        self.send_header("Cache-Control", "no-cache, must-revalidate")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -1524,7 +1524,7 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == "/favicon.ico":
-            return self.send_icon_file("assets/studera-wordmark-favicon-32.png")
+            return self.send_icon_file("assets/studera-wordmark-favicon.ico", "image/x-icon")
         if parsed.path == "/apple-touch-icon.png":
             return self.send_icon_file("assets/studera-wordmark-apple-touch-icon.png")
         if parsed.path == "/api/session":
